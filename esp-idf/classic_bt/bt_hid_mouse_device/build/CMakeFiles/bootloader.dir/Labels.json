@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "D:/Storage/Docs/_Programming/microCon/ESP32/eee196-mobile-aqm/esp-idf/classic_bt/bt_hid_mouse_device/build/CMakeFiles/bootloader"
+		},
+		{
+			"file" : "D:/Storage/Docs/_Programming/microCon/ESP32/eee196-mobile-aqm/esp-idf/classic_bt/bt_hid_mouse_device/build/CMakeFiles/bootloader.rule"
+		},
+		{
+			"file" : "D:/Storage/Docs/_Programming/microCon/ESP32/eee196-mobile-aqm/esp-idf/classic_bt/bt_hid_mouse_device/build/CMakeFiles/bootloader-complete.rule"
+		},
+		{
+			"file" : "D:/Storage/Docs/_Programming/microCon/ESP32/eee196-mobile-aqm/esp-idf/classic_bt/bt_hid_mouse_device/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule"
+		},
+		{
+			"file" : "D:/Storage/Docs/_Programming/microCon/ESP32/eee196-mobile-aqm/esp-idf/classic_bt/bt_hid_mouse_device/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule"
+		},
+		{
+			"file" : "D:/Storage/Docs/_Programming/microCon/ESP32/eee196-mobile-aqm/esp-idf/classic_bt/bt_hid_mouse_device/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule"
+		},
+		{
+			"file" : "D:/Storage/Docs/_Programming/microCon/ESP32/eee196-mobile-aqm/esp-idf/classic_bt/bt_hid_mouse_device/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule"
+		},
+		{
+			"file" : "D:/Storage/Docs/_Programming/microCon/ESP32/eee196-mobile-aqm/esp-idf/classic_bt/bt_hid_mouse_device/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule"
+		},
+		{
+			"file" : "D:/Storage/Docs/_Programming/microCon/ESP32/eee196-mobile-aqm/esp-idf/classic_bt/bt_hid_mouse_device/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule"
+		},
+		{
+			"file" : "D:/Storage/Docs/_Programming/microCon/ESP32/eee196-mobile-aqm/esp-idf/classic_bt/bt_hid_mouse_device/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"bootloader"
+		],
+		"name" : "bootloader"
+	}
+}
