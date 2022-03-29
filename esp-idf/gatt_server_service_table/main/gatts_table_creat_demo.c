@@ -150,10 +150,10 @@ static const uint16_t GATTS_CHAR_UUID_TEST_D       = 0xFF04;
 static const uint16_t primary_service_uuid         = ESP_GATT_UUID_PRI_SERVICE;
 static const uint16_t character_declaration_uuid   = ESP_GATT_UUID_CHAR_DECLARE;
 static const uint16_t character_client_config_uuid = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
-static const uint8_t char_prop_read                =  ESP_GATT_CHAR_PROP_BIT_READ;
+//static const uint8_t char_prop_read                = ESP_GATT_CHAR_PROP_BIT_READ;
 static const uint8_t char_prop_write               = ESP_GATT_CHAR_PROP_BIT_WRITE;
 static const uint8_t char_prop_read_notify         = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
-static const uint8_t char_prop_read_write_notify   = ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
+//static const uint8_t char_prop_read_write_notify   = ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
 static const uint8_t heart_measurement_ccc[2]      = {0x00, 0x00};
 static const uint8_t char_value[4]                 = {0x00, 0x00, 0x00, 0x00};
 
@@ -165,7 +165,7 @@ void send_notification(){
 
 		do{
 			DHT_ret = readDHT();
-			DHTErrorhandler(DHT_ret);
+			DHTErrorHandler(DHT_ret);
 
 			if(DHT_ret!=0){
 				vTaskDelay(1000 / portTICK_RATE_MS);
@@ -522,7 +522,7 @@ void app_main()
 	vTaskDelay( 1000 / portTICK_RATE_MS );
 
 	//DHT22
-	setDHTgpio(18);
+	setDHTgpio(GPIO_NUM_4);
 
 	//BLE
 	ble_server_init();
