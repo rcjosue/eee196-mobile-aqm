@@ -23,37 +23,26 @@
 #ifndef MAIN_PMS_H_
 #define MAIN_PMS_H_
 
-#include "../include/oap_common.h"
-#include "../include/oap_data_pm.h"
 #include "driver/uart.h"
 
-typedef struct {
-	uint8_t indoor;
-	uint8_t enabled;		//internal, read-only
-	uint8_t sensor_idx;
-	pm_data_callback_f callback;
-	uint8_t set_pin;
-	uart_port_t uart_num;
-	uint8_t uart_txd_pin;
-	uint8_t uart_rxd_pin;
-	uint8_t uart_rts_pin;
-	uint8_t uart_cts_pin;
-} pmsx003_config_t;
+esp_err_t pms_init_uart();
 
-/**
- * pm samples data is send to the queue.
- */
-esp_err_t pmsx003_init(pmsx003_config_t* config);
+float get_pm_10();
 
-/**
- * enable/disable sensor.
- */
-esp_err_t pmsx003_enable(pmsx003_config_t* config, uint8_t enabled);
+float get_pm_25();
 
+void PMS_setWake();
 
-/**
- * fill config based on hardware configuration
- */
-esp_err_t pmsx003_set_hardware_config(pmsx003_config_t* config, uint8_t sensor_idx);
+void PMS_setSleep();
+
+void PMS_setPassive();
+
+void PMS_passiveRead();
+
+void PMS_setActive();
+
+void initPMS();
+
+int readPMS();
 
 #endif /* MAIN_PMS_H_ */

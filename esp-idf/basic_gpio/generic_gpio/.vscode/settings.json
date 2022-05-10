@@ -21,7 +21,9 @@
     "dht.h": "c",
     "nvs_flash.h": "c",
     "gpio.h": "c",
-    "oap_debug.h": "c"
+    "oap_debug.h": "c",
+    "*.inc": "c",
+    "sds011.h": "c"
   },
   "idf.flashType": "UART"
 }
