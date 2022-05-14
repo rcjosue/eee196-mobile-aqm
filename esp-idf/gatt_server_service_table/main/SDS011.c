@@ -30,8 +30,8 @@
  */
 
 //== SDS Definitions ========================================================================
-#define ECHO_TEST_TXD  (UART_NUM_0)
-#define ECHO_TEST_RXD  (UART_NUM_0)
+#define ECHO_TEST_TXD   (10)
+#define ECHO_TEST_RXD   (9)
 #define ECHO_TEST_RTS  (UART_PIN_NO_CHANGE)
 #define ECHO_TEST_CTS  (UART_PIN_NO_CHANGE)
 
@@ -106,9 +106,11 @@ float get_pm_25()
 
 void SDS_setwake()
 {
+	printf(SDS_wakecmd);
 	uart_write_bytes(ECHO_UART_PORT, SDS_wakecmd, MAXSDSCMD);
 	SDS_rxbytes = uart_read_bytes(ECHO_UART_PORT, SDS_data, MAXSDSDATA, PACKET_READ_TICS);
 
+	printf("%d", SDS_rxbytes);
 	if (SDS_rxbytes!=10){
 		ESP_LOGE(SDS_TAG, "Set Wake Command Error");
 	}
@@ -116,9 +118,12 @@ void SDS_setwake()
 
 void SDS_setsleep()
 {
+
+	printf(SDS_sleepcmd);
 	uart_write_bytes(ECHO_UART_PORT, SDS_sleepcmd, MAXSDSCMD);
 	SDS_rxbytes = uart_read_bytes(ECHO_UART_PORT, SDS_data, MAXSDSDATA, PACKET_READ_TICS);
 
+	printf("%d \n", SDS_rxbytes);
 	if (SDS_rxbytes!=10){
 		ESP_LOGE(SDS_TAG, "Set Sleep Command Error");
 	}
@@ -126,6 +131,7 @@ void SDS_setsleep()
 
 void SDS_setquery()
 {
+	printf(SDS_querymodecmd);
 	uart_write_bytes(ECHO_UART_PORT, SDS_querymodecmd, MAXSDSCMD);
 	SDS_rxbytes = uart_read_bytes(ECHO_UART_PORT, SDS_data, MAXSDSDATA, PACKET_READ_TICS);
 

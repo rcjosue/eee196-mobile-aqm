@@ -1,6 +1,7 @@
 {
   "C_Cpp.intelliSenseEngine": "Tag Parser",
-  "idf.portWin": "COM9",
+  "idf.portWin": "COM6",
+  "idf.flashBaudRate": "115200",
   "idf.adapterTargetName": "esp32",
   "files.associations": {
     "*.COBOL*": "cobol",
@@ -25,5 +26,9 @@
     "*.inc": "c",
     "sds011.h": "c"
   },
-  "idf.flashType": "UART"
+  "idf.flashType": "UART",
+  "idf.openOcdConfigs": [
+    "interface/ftdi/esp32_devkitj_v1.cfg",
+    "target/esp32.cfg"
+  ]
 }

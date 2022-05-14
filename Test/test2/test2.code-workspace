@@ -1,0 +1,23 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"string.h": "c",
+			"esp_system.h": "c",
+			"*.inc": "c",
+			"cmath": "c",
+			"array": "c",
+			"string": "c",
+			"string_view": "c",
+			"time.h": "c",
+			"dht.h": "c",
+			"gpio.h": "c"
+		},
+		"idf.flashBaudRate": "115200",
+		"idf.portWin": "COM6"
+	}
+}

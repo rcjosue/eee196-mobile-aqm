@@ -2,7 +2,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 #include "esp_system.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
@@ -21,7 +20,7 @@
 #include "gatts_table_creat_demo.h"
 #include "esp_gatt_common_api.h"
 
-#include "DHT.h"
+#include "DHT22.h"
 #include "SDS011.h"
 
 #define GATTS_TABLE_TAG "GATTS_TABLE_DEMO"
@@ -53,9 +52,6 @@ esp_err_t ret;
 uint16_t curr_conn_id;
 uint16_t client_notify_stat;
 uint8_t disable_notif_cmd = 0;
-time_t now = 0;
-char epoch_buf[BUF_SIZE];
-char timestamp_str[BUF_SIZE];
 
 //SDS
 int i = 0;
@@ -65,7 +61,6 @@ float pm_25 = 0;
 
 char pm_10_str[BUF_SIZE];
 char pm_25_str[BUF_SIZE];
-
 
 //DHT
 int DHT_ret = 0;
@@ -165,23 +160,24 @@ static const uint16_t GATTS_CHAR_UUID_TEST_D       = 0xFF04;
 static const uint16_t primary_service_uuid         = ESP_GATT_UUID_PRI_SERVICE;
 static const uint16_t character_declaration_uuid   = ESP_GATT_UUID_CHAR_DECLARE;
 static const uint16_t character_client_config_uuid = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
-//static const uint8_t char_prop_read                = ESP_GATT_CHAR_PROP_BIT_READ;
+// static const uint8_t char_prop_read                =  ESP_GATT_CHAR_PROP_BIT_READ;
 static const uint8_t char_prop_write               = ESP_GATT_CHAR_PROP_BIT_WRITE;
 static const uint8_t char_prop_read_notify         = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
-//static const uint8_t char_prop_read_write_notify   = ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
+// static const uint8_t char_prop_read_write_notify   = ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
 static const uint8_t heart_measurement_ccc[2]      = {0x00, 0x00};
 static const uint8_t char_value[4]                 = {0x00, 0x00, 0x00, 0x00};
 
 //-- functions -------------------------------------------------------------------------------------------------------
 void send_notification(){
 	while(1){
-
-		//-- SDS011 Read ---------------------------
+		//-- SDS011 Read -------------------------
+		printf("=== Reading SDS ===\n" );
+		//Wake Up SDS
 		SDS_setwake();
 
 		vTaskDelay(3000 / portTICK_RATE_MS);
 
-        do{
+		do{
 			SDS_ret = readSDS();
 			SDS_errorhandler(SDS_ret);
 
@@ -200,7 +196,7 @@ void send_notification(){
 
 		do{
 			DHT_ret = readDHT();
-			DHTErrorHandler(DHT_ret);
+			DHT_errorhandler(DHT_ret);
 
 			if(DHT_ret!=0){
 				vTaskDelay(1000 / portTICK_RATE_MS);
@@ -210,24 +206,20 @@ void send_notification(){
 		temp = getTemperature();
 		hum = getHumidity();
 
-        //sprintf(epoch_buf, "%ld", now);
+		printf("Tmp %.1f\n", temp);
+		printf("Hum %.1f\n", hum);
 
-		//sprintf(timestamp_str, "{\"ts\":%s000,", epoch_buf);
-		sprintf(pm_10_str, "\"values\":{\"pm10\":\"%.2f\",", pm_10);
-		sprintf(pm_25_str, "\"pm2_5\":\"%.2f\",", pm_25);
-        sprintf(temp_str, "\"temperature\":\"%.2f\",", temp);
-		sprintf(hum_str, "\"humidity\":\"%.2f\",", hum); 
-		
-		//strcpy(sensor_data, timestamp_str);
+		//Parse
+		sprintf(pm_10_str, "field1=%.2f&", pm_10);
+		sprintf(pm_25_str, "field2=%.2f&", pm_25);
+		sprintf(temp_str, "field3=%.2f&", temp);
+		sprintf(hum_str, "field4=%.2f&", hum); 
+
 		strcpy(sensor_data, pm_10_str);
 		strcat(sensor_data, pm_25_str);
 		strcat(sensor_data, temp_str);
 		strcat(sensor_data, hum_str);
-		//strcat(sensor_data, longitude_str);
-		//strcat(sensor_data, latitude_str);
-
-		//Parse
-		//strcat(sensor_data, ","); //- is delimeter
+		strcat(sensor_data, "-"); //- is delimeter
 
     	ESP_LOGI(GATTS_TABLE_TAG, "Generated String: %s", sensor_data);
 
@@ -560,7 +552,11 @@ void app_main()
 	vTaskDelay( 1000 / portTICK_RATE_MS );
 
 	//DHT22
-	setDHTgpio(GPIO_NUM_4);
+	setDHTgpio(18);
+
+	//SDS
+	initUART();
+	initSDS();
 
 	//BLE
 	ble_server_init();

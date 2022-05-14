@@ -14,10 +14,13 @@ void SDS_task(void *pvParameter)
 {
     initSDS();
     ESP_LOGI(SDS_TAG, "Starting PMS Task\n\n");
+    //Wake Up SDS
+	
 
     while (1)
     {
         ESP_LOGI(SDS_TAG, "=== Reading PMS ===\n");
+        SDS_setwake();
 		int SDS_ret = readSDS();
 		SDS_errorhandler(SDS_ret);
 
@@ -45,6 +48,8 @@ void app_main()
     ESP_ERROR_CHECK(SDS_ret);
 
     esp_log_level_set("*", ESP_LOG_INFO);
+
+    initUART();
 
     xTaskCreate(&SDS_task, "PMS_task", 2048, NULL, 5, NULL);
 }
