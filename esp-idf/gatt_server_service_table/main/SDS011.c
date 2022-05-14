@@ -30,8 +30,8 @@
  */
 
 //== SDS Definitions ========================================================================
-#define ECHO_TEST_TXD  (UART_NUM_0)
-#define ECHO_TEST_RXD  (UART_NUM_0)
+#define ECHO_TEST_TXD  (10)
+#define ECHO_TEST_RXD  (9)
 #define ECHO_TEST_RTS  (UART_PIN_NO_CHANGE)
 #define ECHO_TEST_CTS  (UART_PIN_NO_CHANGE)
 
@@ -189,6 +189,10 @@ int readSDS()
 			SDS_pm_25 = (SDS_data[3]<<8) + (SDS_data[2]/10);
 			return SDS_OK;
 		}
+		
+		//printf("%f\n",SDS_pm_10);
+		//printf("%f\n",SDS_pm_25);
+
 	}else{
 		return SDS_READ_ERROR;
 	}

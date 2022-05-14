@@ -210,13 +210,15 @@ void send_notification(){
 		temp = getTemperature();
 		hum = getHumidity();
 
+		printf("humidity: %.2f\n", hum);
+		printf("temperature: %.2f\n", temp);
         //sprintf(epoch_buf, "%ld", now);
 
 		//sprintf(timestamp_str, "{\"ts\":%s000,", epoch_buf);
 		sprintf(pm_10_str, "\"values\":{\"pm10\":\"%.2f\",", pm_10);
 		sprintf(pm_25_str, "\"pm2_5\":\"%.2f\",", pm_25);
         sprintf(temp_str, "\"temperature\":\"%.2f\",", temp);
-		sprintf(hum_str, "\"humidity\":\"%.2f\",", hum); 
+		sprintf(hum_str, "\"humidity\":\"%.2f\"}", hum); 
 		
 		//strcpy(sensor_data, timestamp_str);
 		strcpy(sensor_data, pm_10_str);
@@ -561,6 +563,10 @@ void app_main()
 
 	//DHT22
 	setDHTgpio(GPIO_NUM_4);
+
+	//DHT22
+	initUART();
+    initSDS();
 
 	//BLE
 	ble_server_init();
