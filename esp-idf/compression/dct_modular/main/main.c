@@ -36,7 +36,7 @@ static const char *TAG = "dsps_dct";
 
 void DHT_task(void *pvParameter)
 {
-    setDHTgpio(4);
+    setDHTgpio(18);
     ESP_LOGI(TAG, "Starting DHT Task\n\n");
 
     for(int i=0; i<16; i++)

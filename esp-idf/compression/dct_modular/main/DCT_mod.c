@@ -61,6 +61,13 @@ void init_DCT(){
     }
 }
 
+void print_DATA(float* array_to_print, int N, char title)
+{
+    ESP_LOGI(TAG, title);
+    for (int i = 0; i < N; i++){
+        ESP_LOGI(TAG, "%f", array_to_print[i]);
+    }
+}
 
 void DCT_mod(float* refVal)
 {
@@ -70,19 +77,12 @@ void DCT_mod(float* refVal)
     float* out = calloc(1024*2, sizeof(float));
     struct ind* trans = calloc(1024*2, sizeof(float));
 
-    // float refVal[18] = {7.1, 4.2,3.9,4.5,4.3,3.6,2,2.9,4.9,6.2,6.9,7.6,7,6.1,5.3,4.3,4,5.2};
-    // float refVal[16] = {7.1, 4.2,3.9,4.5,4.3,3.6,2,2.9,4.9,6.2,6.9,7.6,7,6.1,5.3,4.3};
-
     /*INSERT MEASURED VALUES TO ARRAY*/
     for (int i = 0 ; i < N ; i++) {
         in[i] = refVal[i];
     }    
     
     ESP_LOGI(TAG, "Start Example.");
-
-    // unsigned int start_ref = xthal_get_ccount();
-    // dsps_dct_f32_ref(in, N, out);
-    // unsigned int end_ref = xthal_get_ccount();
 
     /*DCT*/
     //unsigned int start_main = xthal_get_ccount();
@@ -104,14 +104,12 @@ void DCT_mod(float* refVal)
     }
 
     // //SANITY CHECK
-    ESP_LOGI(TAG, "DCT ");
-    for (int i = 0; i < N; i++){
-        ESP_LOGI(TAG, "%f", in[i]);
-    }
-    // ESP_LOGI(TAG, "OUT contents: ");
+    print_DATA(in, N, "DCT ");
+    // ESP_LOGI(TAG, "DCT ");
     // for (int i = 0; i < N; i++){
-    //     ESP_LOGI(TAG, "%f", out[i]);
+    //     ESP_LOGI(TAG, "%f", in[i]);
     // }
+
 
     /*COMPRESSION*/ 
     // insert to a structure that keeps track of index
@@ -136,10 +134,11 @@ void DCT_mod(float* refVal)
     }
 
     //SANITY CHECK
-    ESP_LOGI(TAG, "COMPRESSED ");
-    for (int i = 0; i < N; i++){
-        ESP_LOGI(TAG, "%f", in[i]);
-    }
+    print_DATA(in, N, "COMPRESSED ");
+    // ESP_LOGI(TAG, "COMPRESSED ");
+    // for (int i = 0; i < N; i++){
+    //     ESP_LOGI(TAG, "%f", in[i]);
+    // }
 
     /*RECOVERY OF ORIGINAL DATA*/
     // remove a(u) factor
@@ -149,6 +148,8 @@ void DCT_mod(float* refVal)
     in[0] = in[0]/(sqrt( (double) 1/N ));
 
     dsps_dct_inv_f32(in, N);
+
+    //SANITY CHECK
     ESP_LOGI(TAG, "RECOVERED DATA");
     for (int i = 0; i < N; i++){
         ESP_LOGI(TAG, "%f", in[i] / N * 2);

@@ -23,6 +23,8 @@
 #include "DHT22.h"
 #include "SDS011.h"
 
+#include "DCT_mod.h"
+
 #define GATTS_TABLE_TAG "GATTS_TABLE_DEMO"
 
 #define PROFILE_NUM                 1
@@ -69,6 +71,9 @@ float hum = 0;
 
 char temp_str[BUF_SIZE];
 char hum_str[BUF_SIZE];
+
+//DCT 
+float refVal[BUF_SIZE];
 
 //BLE
 static uint8_t adv_config_done       = 0;
@@ -170,6 +175,7 @@ static const uint8_t char_value[4]                 = {0x00, 0x00, 0x00, 0x00};
 //-- functions -------------------------------------------------------------------------------------------------------
 void send_notification(){
 	while(1){
+        init_DCT();
 		//-- SDS011 Read -------------------------
 		printf("=== Reading SDS ===\n" );
 		//Wake Up SDS
@@ -209,17 +215,33 @@ void send_notification(){
 		printf("Tmp %.1f\n", temp);
 		printf("Hum %.1f\n", hum);
 
+        refVal[0] = pm_10;
+        refVal[1] = pm_10+1;
+        refVal[2] = pm_10+.5;
+        refVal[3] = pm_10+.2;
+        refVal[4] = pm_10;
+        refVal[5] = pm_10+1.5;
+        refVal[6] = pm_10+2.5;
+        refVal[7] = pm_10+2;
+
+        printf("PM: %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f \n", refVal[0], refVal[1], refVal[2], refVal[3], refVal[4], refVal[5], refVal[6], refVal[7] );
+        DCT_mod(refVal);
+        strcpy(pm_10_str, get_compressed_data());
+        printf("%s\n", pm_10_str);
+        strcpy(pm_25_str, get_decompressed_data());
+        printf("%s\n", pm_25_str);
+
 		//Parse
-		sprintf(pm_10_str, "field1=%.2f&", pm_10);
-		sprintf(pm_25_str, "field2=%.2f&", pm_25);
-		sprintf(temp_str, "field3=%.2f&", temp);
-		sprintf(hum_str, "field4=%.2f&", hum); 
+		// sprintf(pm_10_str, "field1=%.2f&", pm_10);
+		// sprintf(pm_25_str, "field2=%.2f&", pm_25);
+		// sprintf(temp_str, "field3=%.2f&", temp);
+		// sprintf(hum_str, "field4=%.2f&", hum); 
 
 		strcpy(sensor_data, pm_10_str);
-		strcat(sensor_data, pm_25_str);
-		strcat(sensor_data, temp_str);
-		strcat(sensor_data, hum_str);
-		strcat(sensor_data, "-"); //- is delimeter
+		// strcat(sensor_data, pm_25_str);
+		// strcat(sensor_data, temp_str);
+		// strcat(sensor_data, hum_str);
+		// strcat(sensor_data, "-"); //- is delimeter
 
     	ESP_LOGI(GATTS_TABLE_TAG, "Generated String: %s", sensor_data);
 
@@ -561,4 +583,5 @@ void app_main()
 	//BLE
 	ble_server_init();
 
+    // init_DCT();
 }

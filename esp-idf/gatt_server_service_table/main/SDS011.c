@@ -106,11 +106,9 @@ float get_pm_25()
 
 void SDS_setwake()
 {
-	printf(SDS_wakecmd);
 	uart_write_bytes(ECHO_UART_PORT, SDS_wakecmd, MAXSDSCMD);
 	SDS_rxbytes = uart_read_bytes(ECHO_UART_PORT, SDS_data, MAXSDSDATA, PACKET_READ_TICS);
 
-	printf("%d", SDS_rxbytes);
 	if (SDS_rxbytes!=10){
 		ESP_LOGE(SDS_TAG, "Set Wake Command Error");
 	}
@@ -119,11 +117,9 @@ void SDS_setwake()
 void SDS_setsleep()
 {
 
-	printf(SDS_sleepcmd);
 	uart_write_bytes(ECHO_UART_PORT, SDS_sleepcmd, MAXSDSCMD);
 	SDS_rxbytes = uart_read_bytes(ECHO_UART_PORT, SDS_data, MAXSDSDATA, PACKET_READ_TICS);
 
-	printf("%d \n", SDS_rxbytes);
 	if (SDS_rxbytes!=10){
 		ESP_LOGE(SDS_TAG, "Set Sleep Command Error");
 	}
