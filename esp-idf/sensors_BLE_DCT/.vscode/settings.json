@@ -26,6 +26,7 @@
     "iostream": "cpp",
     "esp_gatt_common_api.h": "c",
     "*.inc": "c",
-    "gatts_table_creat_demo.h": "c"
+    "gatts_table_creat_demo.h": "c",
+    "stdlib.h": "c"
   }
 }
