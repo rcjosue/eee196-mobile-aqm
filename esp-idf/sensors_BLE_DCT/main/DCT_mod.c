@@ -22,6 +22,8 @@ char temp[128];
 char compressed_data[128];
 char decompressed_data[128];
 
+const int N = 16;
+
 /* Data Structure to keep track of index for cepstral compression */
 struct ind
 {
@@ -64,6 +66,10 @@ void init_DCT(){
     }
 }
 
+void deinit_DCT(){
+    dsps_fft2r_deinit_fc32();
+}
+
 const char* get_compressed_data()
 {
     return compressed_data;
@@ -74,28 +80,39 @@ const char* get_decompressed_data()
     return decompressed_data;
 }
 
-// void print_DATA(float* array_to_print, int N, char title)
-// {
-//     ESP_LOGI(TAG, title);
-//     for (int i = 0; i < N; i++){
-//         ESP_LOGI(TAG, "%f", array_to_print[i]);
-//     }
-// }
+void print_Array(float *arr, char *title)  // Array name Declared as a pointer
+{
+    printf("%s", title);
+    for (int i = 0; i < 16; i++)
+        printf("%f ", arr[i]);
 
-void DCT_mod(float* refVal)
+    printf("\n");
+}
+
+// struct ind* trans[16];
+
+void DCT_mod(float* in)
 {
     /*INITIALIZATION OF VARIABLES*/
-    const int N = 8;
-    float* in = calloc(1024*2, sizeof(float));
-    float* out = calloc(1024*2, sizeof(float));
-    struct ind* trans = calloc(1024*2, sizeof(float));
+    // const int N = 16;
+    // float* in = calloc(1024*2, sizeof(float));
+    // float* out = calloc(1024*2, sizeof(float));
+    struct ind* trans = calloc(16, sizeof(float));
 
     /*INSERT MEASURED VALUES TO ARRAY*/
-    for (int i = 0 ; i < N ; i++) {
-        in[i] = refVal[i];
-    }    
+    // for (int i = 0 ; i < N ; i++) {
+    //     in[i] = refVal[i];
+    // }    
     
     // ESP_LOGI(TAG, "Start Example.");
+
+    // SANITY CHECK
+    // print_DATA(in, N, "IN ");
+    // ESP_LOGI(TAG, "DCT ~~~~~~");
+    // print_Array(in, "IN Contents: ");
+    // for (int i = 0; i < N; i++){
+    //     ESP_LOGI(TAG, "%f ", in[i]);
+    // }
 
     /*DCT*/
     //unsigned int start_main = xthal_get_ccount();
@@ -116,8 +133,8 @@ void DCT_mod(float* refVal)
         ESP_LOGE(TAG, "Operation error = %i", DCT_ret);
     }
 
-    // //SANITY CHECK
-    //print_DATA(in, N, "DCT ");
+    //SANITY CHECK
+    // print_DATA(in, N, "DCT ");
     // ESP_LOGI(TAG, "DCT ");
     // for (int i = 0; i < N; i++){
     //     ESP_LOGI(TAG, "%f", in[i]);
@@ -147,16 +164,28 @@ void DCT_mod(float* refVal)
     }
 
     //SANITY CHECK
-    // print_DATA(in, N, "COMPRESSED ");
-    strcpy(compressed_data, "COMPRESSED: [");
+    // ESP_LOGI(TAG, "COMP ~~~~~~");
+    // print_Array(in, "IN Compressed: ");
+    // strcpy(compressed_data, "COMPRESSED: [");
     // ESP_LOGI(TAG, "COMPRESSED ");
-    for (int i = 0; i < N; i++){
-        // ESP_LOGI(TAG, "%f", in[i]);
-        sprintf(temp, "%.2f, ", in[i]);
-        strcat(compressed_data, temp);
-    }
-    strcat(compressed_data, "]");
+    // for (int i = 0; i < N; i++){
+    //     // ESP_LOGI(TAG, "%f", in[i]);
+    //     sprintf(temp, "%.2f, ", in[i]);
+    //     strcat(compressed_data, temp);
+    // }
+    // strcat(compressed_data, "]");
 
+    // ESP_LOGI(TAG, "End Example.");
+
+    
+    // free(in);
+    // free(out);
+    free(trans);
+
+}
+
+void iDCT_mod(float* in)
+{
     /*RECOVERY OF ORIGINAL DATA*/
     // remove a(u) factor
     for (int i = 1; i < N; i++){
@@ -166,26 +195,20 @@ void DCT_mod(float* refVal)
 
     dsps_dct_inv_f32(in, N);
 
-    //SANITY CHECK
-    strcpy(decompressed_data, "DECOMPRESSED: [");
-    // ESP_LOGI(TAG, "RECOVERED DATA");
     for (int i = 0; i < N; i++){
-        // ESP_LOGI(TAG, "%f", in[i] / N * 2);
-        sprintf(temp, "%.2f, ", in[i] / N * 2);
-        strcat(decompressed_data, temp);
+        in[i] = in[i] / N * 2;
     }
-    strcat(decompressed_data, "]");
-
-    // ESP_LOGI(TAG, "End Example.");
-
-    dsps_fft2r_deinit_fc32();
-    free(in);
-    free(out);
-    free(trans);
- 
-    // //SANITY CHECK
-    // ESP_LOGI(TAG, "DEFACTORED");
+    //SANITY CHECK
+    // ESP_LOGI(TAG, "iDCT ~~~~~~");
+    // print_Array(in, "IN Decompressed: ");
+    // strcpy(decompressed_data, "DECOMPRESSED: [");
+    // ESP_LOGI(TAG, "RECOVERED DATA");
     // for (int i = 0; i < N; i++){
-    //     ESP_LOGI(TAG, "defactored: %f", in[i]);
+    //     // ESP_LOGI(TAG, "%f", in[i] / N * 2);
+    //     sprintf(temp, "%.2f, ", in[i] / N * 2);
+    //     strcat(decompressed_data, temp);
     // }
+    // strcat(decompressed_data, "]");
+
+    
 }

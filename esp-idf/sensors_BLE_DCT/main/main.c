@@ -5,6 +5,7 @@
 #include "esp_system.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+// #include "nvs.h"
 #include "rom/ets_sys.h"
 #include "driver/gpio.h"
 #include "sdkconfig.h"
@@ -12,6 +13,8 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+// #include "freertos/semphr.h"
+// #include "freertos/queue.h"
 #include "freertos/event_groups.h"
 
 #include "esp_gap_ble_api.h"
@@ -47,12 +50,31 @@
 uint8_t ble_data[BUF_SIZE];
 char sensor_data[BUF_SIZE];
 
+static const char *TAG = "INTEGRATED";
 esp_err_t ret;
+esp_err_t err; //temporary lang
 
 //GATT service table variables
 uint16_t curr_conn_id;
 uint16_t client_notify_stat;
 uint8_t disable_notif_cmd = 0;
+
+//Memory
+nvs_handle save_data_handle;
+nvs_handle load_data_handle;
+size_t nvs_val_size = BUF_SIZE;
+
+int write_counter = 0; // value will default to 0, if not set yet in NVS
+char write_counter_str[BUF_SIZE] = "0";
+char save_string[BUF_SIZE];
+
+int read_counter = 0;
+char read_counter_str[BUF_SIZE] = "0";
+
+int max_read_counter = 0;
+char max_read_counter_str[BUF_SIZE] = "0";
+
+char read_counter_nvs_val[BUF_SIZE] = "0";
 
 //SDS
 int i = 0;
@@ -71,10 +93,24 @@ float hum = 0;
 char temp_str[BUF_SIZE];
 char hum_str[BUF_SIZE];
 
+//Sensor Arrays
+float pm_10_arr[32];
+float pm_25_arr[32];
+float temp_arr[32];
+float hum_arr[32];
+int arr_counter = 0;
+
 //DCT 
 float refVal[BUF_SIZE];
 
 //BLE
+bool is_ble_connected = false;
+
+uint8_t ble_notify_sensor_data[BUF_SIZE];
+uint8_t ble_notify_saved_data[BUF_SIZE];
+
+char ble_epoch_str[BUF_SIZE];
+
 static uint8_t adv_config_done       = 0;
 
 uint16_t heart_rate_handle_table[HRS_IDX_NB];
@@ -172,9 +208,302 @@ static const uint8_t heart_measurement_ccc[2]      = {0x00, 0x00};
 static const uint8_t char_value[4]                 = {0x00, 0x00, 0x00, 0x00};
 
 //-- functions -------------------------------------------------------------------------------------------------------
+void printArray(float *arr, char *title)  // Array name Declared as a pointer
+{
+    printf("%s", title);
+    for (int i = 0; i < 16; i++)
+        printf("%f ", arr[i]);
+
+    printf("\n");
+}
+
+void save_sensor_data(){
+	ESP_LOGI(TAG, "String to Save: %s", save_string);
+
+	//Save String to Memory
+	ESP_LOGI(TAG, "Opening Non-Volatile Storage (NVS) handle");
+
+	//Open NVS Memory
+	err = nvs_open("storage", NVS_READWRITE, &save_data_handle);
+
+	if (err!=ESP_OK){
+	    ESP_LOGE(TAG, "Error (%s) opening NVS handle!", esp_err_to_name(err));
+	}else{
+		ESP_LOGI(TAG, "Done");
+
+		//Get Write Counter from NVS
+		ESP_LOGI(TAG, "Getting counter value from NVS");
+
+		nvs_val_size = BUF_SIZE;
+		err = nvs_get_str(save_data_handle, "counter", write_counter_str, &nvs_val_size);
+
+		switch (err) {
+			case ESP_OK:
+				ESP_LOGI(TAG, "Done");
+				ESP_LOGI(TAG, "Got memory block number = %s", write_counter_str);
+				break;
+			case ESP_ERR_NVS_NOT_FOUND:
+				ESP_LOGE(TAG, "The value is not initialized yet!");
+				break;
+			default :
+				ESP_LOGE(TAG, "Error (%s) reading!", esp_err_to_name(err));
+		}
+
+		sscanf(write_counter_str, "%d", &write_counter);
+
+		if(write_counter >= 128){
+			ESP_LOGI(TAG, "Max memory block is reached, resetting write counter to 0");
+			write_counter = 0;	//Reset Write Counter if block memory is 100
+			sprintf(write_counter_str, "%d", write_counter); //convert write_counter to string
+		}
+
+		//Erase Data in Block and Write Complete Sensor Data
+		ESP_LOGI(TAG, "Committing updates in NVS block memory: %s", write_counter_str);
+		err = nvs_set_str(save_data_handle, write_counter_str, save_string);
+		err = nvs_commit(save_data_handle);
+
+		if(err!=ESP_OK){
+			ESP_LOGI(TAG, "Sensor Data Save to NVS Failed");
+		}else{
+			ESP_LOGI(TAG, "Sensor Data Save to NVS Success");
+		}
+
+		//Update Write Counter and Save to NVS
+		ESP_LOGI(TAG, "Updating nvs block memory counter");
+		write_counter++;
+		sprintf(write_counter_str, "%d", write_counter); //convert write_counter to string
+
+		ESP_LOGI(TAG, "Next NVS block memory: %s", write_counter_str);
+		err = nvs_set_str(save_data_handle, "counter", write_counter_str);
+		err = nvs_commit(save_data_handle);
+
+		if(err!=ESP_OK){
+			ESP_LOGI(TAG, "Updated counter save to NVS failed");
+		}else{
+			ESP_LOGI(TAG, "Updated counter save to NVS success");
+		}
+		
+		//Close NVS Handle
+		nvs_close(save_data_handle);
+	}
+
+    vTaskDelete(NULL);
+}
+
+void send_stored_data()
+{
+	ESP_LOGI(TAG, "Detected initial connection to mobile node, dumping all saved data...");
+
+	//Open NVS Memory
+	err = nvs_open("storage", NVS_READWRITE, &load_data_handle);
+
+	if (err!=ESP_OK){
+		ESP_LOGE(TAG, "Error (%s) opening NVS handle!", esp_err_to_name(err));
+	}else{
+		ESP_LOGI(TAG, "Done");
+
+		//Get Read Counter from NVS
+		ESP_LOGI(TAG, "Getting max read counter value from NVS");
+
+		nvs_val_size = BUF_SIZE;
+		err = nvs_get_str(load_data_handle, "counter", max_read_counter_str, &nvs_val_size);
+
+		switch (err) {
+			case ESP_OK:
+				ESP_LOGI(TAG, "Done");
+				ESP_LOGI(TAG, "Got maximum read memory block number = %s", max_read_counter_str);
+				break;
+			case ESP_ERR_NVS_NOT_FOUND:
+				ESP_LOGE(TAG, "The value is not initialized yet!");
+				break;
+			default :
+				ESP_LOGE(TAG, "Error (%s) reading!", esp_err_to_name(err));
+		}
+
+		sscanf(max_read_counter_str, "%d", &max_read_counter);
+
+		//Restart Write Count to Zero
+		ESP_LOGI(TAG, "Restarting write counter to 0");
+		err = nvs_set_str(load_data_handle, "counter", "0");
+		err = nvs_commit(load_data_handle);
+
+		if(err!=ESP_OK){
+			ESP_LOGI(TAG, "Save Failed");
+		}else{
+			ESP_LOGI(TAG, "Save Success");
+		}
+
+		//Start Getting all stored data from memory and upload via mesh
+		for(read_counter=0; read_counter<max_read_counter; read_counter++){
+			sprintf(read_counter_str, "%d", read_counter); //convert read_counter to string
+
+	    	ESP_LOGI(TAG, "Reading string from NVS key: %s", read_counter_str);
+
+			nvs_val_size = BUF_SIZE;
+			err = nvs_get_str(load_data_handle, read_counter_str, read_counter_nvs_val, &nvs_val_size);
+
+			switch (err) {
+				case ESP_OK:
+					ESP_LOGI(TAG, "Done");
+					ESP_LOGI(TAG, "Read value = %s", read_counter_nvs_val);
+
+					//Send Stored MQTT String to Mobile via Notification
+					memcpy(ble_notify_saved_data, read_counter_nvs_val, BUF_SIZE);
+					esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_notify_saved_data, false);
+
+					ESP_LOGI(TAG, "Notification Sent!");
+
+					break;
+				case ESP_ERR_NVS_NOT_FOUND:
+					ESP_LOGE(TAG, "The value is not initialized yet!");
+					break;
+				default :
+					ESP_LOGE(TAG, "Error (%s) reading!", esp_err_to_name(err));
+			}
+		}
+
+		nvs_close(load_data_handle);
+	}
+
+    vTaskDelete(NULL);
+}
+
+void read_for_compression(){
+    while(1){
+        
+		//-- SDS011 Read -------------------------
+		printf("=== Reading SDS ===\n" );
+		//Wake Up SDS
+		SDS_setwake();
+		vTaskDelay(3000 / portTICK_RATE_MS);
+
+		do{
+			SDS_ret = readSDS();
+			SDS_errorhandler(SDS_ret);
+
+            vTaskDelay(1000 / portTICK_RATE_MS);
+
+			pm_10 = get_pm_10();
+			pm_25 = get_pm_25();
+		}while((SDS_ret!=0) || (pm_10<pm_25));
+
+		printf("PM10: %.2f | ", pm_10);
+		printf("PM2.5: %.2f\n", pm_25);
+
+		//Set SDS to sleep
+		SDS_setsleep();
+
+
+		//-- DHT22 Read ---------------------------
+		printf("=== Reading DHT ===\n" );
+
+		do{
+			DHT_ret = readDHT();
+			DHT_errorhandler(DHT_ret);
+
+			if(DHT_ret!=0){
+				vTaskDelay(1000 / portTICK_RATE_MS);
+			}
+		}while(DHT_ret != 0);
+
+		temp = getTemperature();
+		hum = getHumidity();
+
+		printf("Tmp %.1f | ", temp);
+		printf("Hum %.1f\n", hum);
+
+        //Store measured values to array
+        pm_10_arr[arr_counter] = pm_10;
+        pm_25_arr[arr_counter] = pm_25;
+        temp_arr[arr_counter] = temp;
+        hum_arr[arr_counter] = hum;
+
+        arr_counter++;
+
+        if (arr_counter == 16){
+            // printArray(pm_10_arr, "PM10: ");
+            // printArray(pm_25_arr, "PM25: ");
+            // printArray(temp_arr, "TEMP: ");
+            // printArray(hum_arr, "HUM: ");
+
+            //Compression
+            init_DCT();
+
+            DCT_mod(pm_10_arr);
+            printArray(pm_10_arr, "PM10 Compressed: ");
+            // strcpy(pm_10_str, get_compressed_data());
+            // printf("PM10 %s\n", pm_10_str);
+            
+            DCT_mod(pm_25_arr);
+            printArray(pm_25_arr, "PM25 Compressed: ");
+            // strcpy(pm_25_str, get_compressed_data());
+            // printf("PM25 %s\n", pm_25_str);
+
+            DCT_mod(temp_arr);
+            printArray(temp_arr, "TEMP Compressed: ");
+            // strcpy(temp_str, get_compressed_data());
+            // printf("TEMP %s\n", temp_str);
+
+            DCT_mod(hum_arr);
+            printArray(hum_arr, "HUM Compressed: ");
+            // strcpy(hum_str, get_compressed_data());
+            // printf("HUM %s\n", hum_str);
+
+            //Parse
+
+            for (int i = 0; i < 16; i++){
+                sprintf(pm_10_str, "{\"pm10\":\"%.6f\",", pm_10_arr[i]);
+                sprintf(pm_25_str, "\"pm2_5\":\"%.6f\",", pm_25_arr[i]);
+                sprintf(temp_str, "\"temperature\":\"%.6f\",", temp_arr[i]);
+                sprintf(hum_str, "\"humidity\":\"%.6f\"}", hum_arr[i]);
+
+                strcpy(sensor_data, pm_10_str);
+		        strcat(sensor_data, pm_25_str);
+		        strcat(sensor_data, temp_str);
+		        strcat(sensor_data, hum_str);
+
+                ESP_LOGI(TAG, "Generated String: %s", sensor_data);
+                strcpy(save_string, sensor_data);
+
+                xTaskCreate(save_sensor_data, "SAVE_DATA", 3072, NULL, 5, NULL);
+                vTaskDelay(2 * 1000 / portTICK_RATE_MS);
+
+            } //send_stored_data after storing **di ko lam san lalagay
+            
+
+            iDCT_mod(pm_10_arr);
+            printArray(pm_10_arr, "PM10 Decompressed: ");
+            // strcpy(pm_10_str, get_decompressed_data());
+            // printf("PM10 %s\n", pm_10_str);
+
+            iDCT_mod(pm_25_arr);
+            printArray(pm_25_arr, "PM25 Decompressed: ");
+            // strcpy(pm_25_str, get_decompressed_data());
+            // printf("PM25 %s\n", pm_25_str);
+
+            iDCT_mod(temp_arr);
+            printArray(temp_arr, "TEMP Decompressed: ");
+            // strcpy(temp_str, get_decompressed_data());
+            // printf("TEMP %s\n", temp_str);
+
+            iDCT_mod(hum_arr);
+            printArray(hum_arr, "HUM Decompressed: ");
+            // strcpy(hum_str, get_decompressed_data());
+            // printf("HUM %s\n", hum_str);
+
+            arr_counter = 0;
+            deinit_DCT();
+
+        }
+
+        //delay 3 seconds
+		vTaskDelay(3000 / portTICK_RATE_MS);
+    }
+}
+
 void send_notification(){
 	while(1){
-        init_DCT();
+        
 		//-- SDS011 Read -------------------------
 		printf("=== Reading SDS ===\n" );
 		//Wake Up SDS
@@ -430,7 +759,8 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             break;
         case ESP_GATTS_START_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "SERVICE_START_EVT, status %d, service_handle %d", param->start.status, param->start.service_handle);
-			xTaskCreate(send_notification, "BLE_NOTIF", 3072, NULL, 5, NULL);
+            //***USING NEW read_for_compression FUNCTION. ORIGINAL: send_notification
+			xTaskCreate(read_for_compression, "BLE_NOTIF", 3072, NULL, 5, NULL);
             break;
         case ESP_GATTS_CONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_CONNECT_EVT, conn_id = %d", param->connect.conn_id);
@@ -571,13 +901,15 @@ void app_main()
     }
     ESP_ERROR_CHECK( ret );
 	vTaskDelay( 1000 / portTICK_RATE_MS );
-
+    
 	//DHT22
 	setDHTgpio(18);
 
 	//SDS
 	initUART();
 	initSDS();
+
+    // read_for_compression();
 
 	//BLE
 	ble_server_init();

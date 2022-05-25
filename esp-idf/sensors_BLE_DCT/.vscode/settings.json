@@ -6,7 +6,7 @@
     "interface/ftdi/esp32_devkitj_v1.cfg",
     "target/esp32.cfg"
   ],
-  "idf.portWin": "COM9",
+  "idf.portWin": "COM5",
   "idf.flashBaudRate": "115200",
   "files.associations": {
     "*.COBOL*": "cobol",
@@ -27,6 +27,9 @@
     "esp_gatt_common_api.h": "c",
     "*.inc": "c",
     "gatts_table_creat_demo.h": "c",
-    "stdlib.h": "c"
+    "stdlib.h": "c",
+    "task.h": "c",
+    "esp_bt_main.h": "c",
+    "*.ipp": "c"
   }
 }
