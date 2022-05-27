@@ -274,7 +274,7 @@ void save_sensor_data(){
 		nvs_close(save_data_handle);
 	}
 
-    vTaskDelete(NULL);
+    // vTaskDelete(NULL);
 }
 
 void send_notification(){
@@ -346,7 +346,7 @@ void send_notification(){
             printArray(hum_arr, "HUM Compressed: ");
 
             arr_counter = 0;
-            deinit_DCT();            
+            // deinit_DCT();            
 
             for (int i = 0; i < 16; i++){
                 sprintf(pm_10_str, "{\"pm10\":\"%.6f\",", pm_10_arr[i]);
@@ -377,10 +377,11 @@ void send_notification(){
                 }
 
 
-                // strcpy(save_string, sensor_data);
-    
+                strcpy(save_string, sensor_data);
+
+                save_sensor_data();
                 // xTaskCreate(save_sensor_data, "SAVE_DATA", 3072, NULL, 5, NULL);
-                // vTaskDelay(2 * 1000 / portTICK_RATE_MS);
+                vTaskDelay(2 * 1000 / portTICK_RATE_MS);
 
             }    
 
@@ -396,7 +397,7 @@ void send_notification(){
             // iDCT_mod(hum_arr);
             // printArray(hum_arr, "HUM Decompressed: ");
 
-            // deinit_DCT();
+            deinit_DCT();
         }
 
     	//delay 3 seconds
