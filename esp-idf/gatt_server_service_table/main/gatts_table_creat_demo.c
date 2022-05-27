@@ -29,7 +29,7 @@
 #define PROFILE_NUM                 1
 #define PROFILE_APP_IDX             0
 #define ESP_APP_ID                  0x55
-#define SAMPLE_DEVICE_NAME          "CoE_198"
+#define SAMPLE_DEVICE_NAME          "CoE_199"
 #define SVC_INST_ID                 0
 
 /* The max length of characteristic value. When the gatt client write or prepare write, 
@@ -562,7 +562,7 @@ void app_main()
 	vTaskDelay( 1000 / portTICK_RATE_MS );
 
 	//DHT22
-	setDHTgpio(GPIO_NUM_4);
+	setDHTgpio(GPIO_NUM_18);
 
 	//DHT22
 	initUART();
