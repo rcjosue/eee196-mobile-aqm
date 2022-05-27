@@ -18,10 +18,6 @@
 static const char *TAG = "dsps_dct";
 esp_err_t DCT_ret;
 
-char temp[128];
-char compressed_data[128];
-char decompressed_data[128];
-
 const int N = 16;
 
 /* Data Structure to keep track of index for cepstral compression */
@@ -70,26 +66,7 @@ void deinit_DCT(){
     dsps_fft2r_deinit_fc32();
 }
 
-const char* get_compressed_data()
-{
-    return compressed_data;
-}
-
-const char* get_decompressed_data()
-{
-    return decompressed_data;
-}
-
-void print_Array(float *arr, char *title)  // Array name Declared as a pointer
-{
-    printf("%s", title);
-    for (int i = 0; i < 16; i++)
-        printf("%f ", arr[i]);
-
-    printf("\n");
-}
-
-// struct ind* trans[16];
+struct ind trans[16];
 
 void DCT_mod(float* in)
 {
@@ -97,22 +74,7 @@ void DCT_mod(float* in)
     // const int N = 16;
     // float* in = calloc(1024*2, sizeof(float));
     // float* out = calloc(1024*2, sizeof(float));
-    struct ind* trans = calloc(16, sizeof(float));
-
-    /*INSERT MEASURED VALUES TO ARRAY*/
-    // for (int i = 0 ; i < N ; i++) {
-    //     in[i] = refVal[i];
-    // }    
-    
-    // ESP_LOGI(TAG, "Start Example.");
-
-    // SANITY CHECK
-    // print_DATA(in, N, "IN ");
-    // ESP_LOGI(TAG, "DCT ~~~~~~");
-    // print_Array(in, "IN Contents: ");
-    // for (int i = 0; i < N; i++){
-    //     ESP_LOGI(TAG, "%f ", in[i]);
-    // }
+    // struct ind* trans = calloc(16, sizeof(float));
 
     /*DCT*/
     //unsigned int start_main = xthal_get_ccount();
@@ -133,14 +95,6 @@ void DCT_mod(float* in)
         ESP_LOGE(TAG, "Operation error = %i", DCT_ret);
     }
 
-    //SANITY CHECK
-    // print_DATA(in, N, "DCT ");
-    // ESP_LOGI(TAG, "DCT ");
-    // for (int i = 0; i < N; i++){
-    //     ESP_LOGI(TAG, "%f", in[i]);
-    // }
-
-
     /*COMPRESSION*/ 
     // insert to a structure that keeps track of index
     for (int i = 0 ; i < N ; i++) {
@@ -156,31 +110,12 @@ void DCT_mod(float* in)
         coeffs++;
     }
 
-    // ESP_LOGI(TAG, "number of coeffs reqd: %i\n", coeffs);
     /*Cepstral Compression*/
     for (int i = coeffs; i < N; i++){
-        // ESP_LOGI(TAG, "to make zero -> %f : \n", trans[i].value);
         in[trans[i].index] = 0;
     }
 
-    //SANITY CHECK
-    // ESP_LOGI(TAG, "COMP ~~~~~~");
-    // print_Array(in, "IN Compressed: ");
-    // strcpy(compressed_data, "COMPRESSED: [");
-    // ESP_LOGI(TAG, "COMPRESSED ");
-    // for (int i = 0; i < N; i++){
-    //     // ESP_LOGI(TAG, "%f", in[i]);
-    //     sprintf(temp, "%.2f, ", in[i]);
-    //     strcat(compressed_data, temp);
-    // }
-    // strcat(compressed_data, "]");
-
-    // ESP_LOGI(TAG, "End Example.");
-
-    
-    // free(in);
-    // free(out);
-    free(trans);
+    // free(trans);
 
 }
 
@@ -198,17 +133,5 @@ void iDCT_mod(float* in)
     for (int i = 0; i < N; i++){
         in[i] = in[i] / N * 2;
     }
-    //SANITY CHECK
-    // ESP_LOGI(TAG, "iDCT ~~~~~~");
-    // print_Array(in, "IN Decompressed: ");
-    // strcpy(decompressed_data, "DECOMPRESSED: [");
-    // ESP_LOGI(TAG, "RECOVERED DATA");
-    // for (int i = 0; i < N; i++){
-    //     // ESP_LOGI(TAG, "%f", in[i] / N * 2);
-    //     sprintf(temp, "%.2f, ", in[i] / N * 2);
-    //     strcat(decompressed_data, temp);
-    // }
-    // strcat(decompressed_data, "]");
-
     
 }

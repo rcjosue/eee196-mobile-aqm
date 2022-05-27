@@ -30,8 +30,8 @@
  */
 
 //== SDS Definitions ========================================================================
-#define ECHO_TEST_TXD  (17) //10
-#define ECHO_TEST_RXD  (16)	//9
+#define ECHO_TEST_TXD  (17)
+#define ECHO_TEST_RXD  (16)
 #define ECHO_TEST_RTS  (UART_PIN_NO_CHANGE)
 #define ECHO_TEST_CTS  (UART_PIN_NO_CHANGE)
 

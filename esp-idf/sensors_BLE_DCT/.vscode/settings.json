@@ -28,8 +28,17 @@
     "*.inc": "c",
     "gatts_table_creat_demo.h": "c",
     "stdlib.h": "c",
-    "task.h": "c",
-    "esp_bt_main.h": "c",
-    "*.ipp": "c"
+    "optional": "c",
+    "istream": "c",
+    "ostream": "c",
+    "ratio": "c",
+    "system_error": "c",
+    "array": "c",
+    "functional": "c",
+    "tuple": "c",
+    "type_traits": "c",
+    "utility": "c",
+    "string_view": "c",
+    "regex": "c"
   }
 }

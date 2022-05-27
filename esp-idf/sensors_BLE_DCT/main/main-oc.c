@@ -47,31 +47,12 @@
 uint8_t ble_data[BUF_SIZE];
 char sensor_data[BUF_SIZE];
 
-static const char *TAG = "INTEGRATED";
 esp_err_t ret;
-esp_err_t err; //temporary lang
 
 //GATT service table variables
 uint16_t curr_conn_id;
 uint16_t client_notify_stat;
 uint8_t disable_notif_cmd = 0;
-
-//Memory
-nvs_handle save_data_handle;
-nvs_handle load_data_handle;
-size_t nvs_val_size = BUF_SIZE;
-
-int write_counter = 0; // value will default to 0, if not set yet in NVS
-char write_counter_str[BUF_SIZE] = "0";
-char save_string[BUF_SIZE];
-
-int read_counter = 0;
-char read_counter_str[BUF_SIZE] = "0";
-
-int max_read_counter = 0;
-char max_read_counter_str[BUF_SIZE] = "0";
-
-char read_counter_nvs_val[BUF_SIZE] = "0";
 
 //SDS
 int i = 0;
@@ -90,12 +71,8 @@ float hum = 0;
 char temp_str[BUF_SIZE];
 char hum_str[BUF_SIZE];
 
-//Sensor Arrays
-float pm_10_arr[32];
-float pm_25_arr[32];
-float temp_arr[32];
-float hum_arr[32];
-int arr_counter = 0;
+//DCT 
+float refVal[BUF_SIZE];
 
 //BLE
 static uint8_t adv_config_done       = 0;
@@ -195,94 +172,9 @@ static const uint8_t heart_measurement_ccc[2]      = {0x00, 0x00};
 static const uint8_t char_value[4]                 = {0x00, 0x00, 0x00, 0x00};
 
 //-- functions -------------------------------------------------------------------------------------------------------
-void printArray(float *arr, char *title)  // Array name Declared as a pointer
-{
-    printf("%s", title);
-    for (int i = 0; i < 16; i++)
-        printf("%f ", arr[i]);
-
-    printf("\n");
-}
-
-void save_sensor_data(){
-	ESP_LOGI(TAG, "String to Save: %s", save_string);
-
-	//Save String to Memory
-	ESP_LOGI(TAG, "Opening Non-Volatile Storage (NVS) handle");
-
-	//Open NVS Memory
-	err = nvs_open("storage", NVS_READWRITE, &save_data_handle);
-
-	if (err!=ESP_OK){
-	    ESP_LOGE(TAG, "Error (%s) opening NVS handle!", esp_err_to_name(err));
-	}else{
-		ESP_LOGI(TAG, "Done");
-
-		//Get Write Counter from NVS
-		ESP_LOGI(TAG, "Getting counter value from NVS");
-
-		nvs_val_size = BUF_SIZE;
-		err = nvs_get_str(save_data_handle, "counter", write_counter_str, &nvs_val_size);
-
-		switch (err) {
-			case ESP_OK:
-				ESP_LOGI(TAG, "Done");
-				ESP_LOGI(TAG, "Got memory block number = %s", write_counter_str);
-				break;
-			case ESP_ERR_NVS_NOT_FOUND:
-				ESP_LOGE(TAG, "The value is not initialized yet!");
-				break;
-			default :
-				ESP_LOGE(TAG, "Error (%s) reading!", esp_err_to_name(err));
-		}
-
-		sscanf(write_counter_str, "%d", &write_counter);
-
-		if(write_counter >= 128){
-			ESP_LOGI(TAG, "Max memory block is reached, resetting write counter to 0");
-			write_counter = 0;	//Reset Write Counter if block memory is 100
-			sprintf(write_counter_str, "%d", write_counter); //convert write_counter to string
-		}
-
-		//Erase Data in Block and Write Complete Sensor Data
-		ESP_LOGI(TAG, "Committing updates in NVS block memory: %s", write_counter_str);
-		err = nvs_set_str(save_data_handle, write_counter_str, save_string);
-		err = nvs_commit(save_data_handle);
-
-		if(err!=ESP_OK){
-			ESP_LOGI(TAG, "Sensor Data Save to NVS Failed");
-		}else{
-			ESP_LOGI(TAG, "Sensor Data Save to NVS Success");
-		}
-
-		//Update Write Counter and Save to NVS
-		ESP_LOGI(TAG, "Updating nvs block memory counter");
-		write_counter++;
-		sprintf(write_counter_str, "%d", write_counter); //convert write_counter to string
-
-		ESP_LOGI(TAG, "Next NVS block memory: %s", write_counter_str);
-		err = nvs_set_str(save_data_handle, "counter", write_counter_str);
-		err = nvs_commit(save_data_handle);
-
-		if(err!=ESP_OK){
-			ESP_LOGI(TAG, "Updated counter save to NVS failed");
-		}else{
-			ESP_LOGI(TAG, "Updated counter save to NVS success");
-		}
-		
-		//Close NVS Handle
-		nvs_close(save_data_handle);
-	}
-
-    vTaskDelete(NULL);
-}
-
 void send_notification(){
-
-
 	while(1){
         init_DCT();
-
 		//-- SDS011 Read -------------------------
 		printf("=== Reading SDS ===\n" );
 		//Wake Up SDS
@@ -322,85 +214,54 @@ void send_notification(){
 		printf("Tmp %.1f\n", temp);
 		printf("Hum %.1f\n", hum);
 
-        //Store measured values to array
-        pm_10_arr[arr_counter] = pm_10;
-        pm_25_arr[arr_counter] = pm_25;
-        temp_arr[arr_counter] = temp;
-        hum_arr[arr_counter] = hum;
+        refVal[0] = pm_10;
+        refVal[1] = pm_10+1;
+        refVal[2] = pm_10+.5;
+        refVal[3] = pm_10+.2;
+        refVal[4] = pm_10;
+        refVal[5] = pm_10+1.5;
+        refVal[6] = pm_10+2.5;
+        refVal[7] = pm_10+2;
 
-		arr_counter++;
+        printf("PM: %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f \n", refVal[0], refVal[1], refVal[2], refVal[3], refVal[4], refVal[5], refVal[6], refVal[7] );
+        DCT_mod(refVal);
+        strcpy(pm_10_str, get_compressed_data());
+        printf("%s\n", pm_10_str);
+        strcpy(pm_25_str, get_decompressed_data());
+        printf("%s\n", pm_25_str);
 
-        if (arr_counter == 16){
-            init_DCT();
+		//Parse
+		// sprintf(pm_10_str, "field1=%.2f&", pm_10);
+		// sprintf(pm_25_str, "field2=%.2f&", pm_25);
+		// sprintf(temp_str, "field3=%.2f&", temp);
+		// sprintf(hum_str, "field4=%.2f&", hum); 
 
-            DCT_mod(pm_10_arr);
-            printArray(pm_10_arr, "PM10 Compressed: ");
+		strcpy(sensor_data, pm_10_str);
+		// strcat(sensor_data, pm_25_str);
+		// strcat(sensor_data, temp_str);
+		// strcat(sensor_data, hum_str);
+		// strcat(sensor_data, "-"); //- is delimeter
 
-            DCT_mod(pm_25_arr);
-            printArray(pm_25_arr, "PM25 Compressed: ");
+    	ESP_LOGI(GATTS_TABLE_TAG, "Generated String: %s", sensor_data);
 
-            DCT_mod(temp_arr);
-            printArray(temp_arr, "TEMP Compressed: ");
-            
-            DCT_mod(hum_arr);
-            printArray(hum_arr, "HUM Compressed: ");
+		memcpy(ble_data, sensor_data, BUF_SIZE);
 
-            arr_counter = 0;
-            deinit_DCT();            
+		//check if client notification status	
+		if(client_notify_stat == 1){
+			//send sensor data notification to client
+			esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, false);
+    		ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
+		}else if(client_notify_stat == 2){
+			//send sensor data indication to client
+			esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, true);
+    		ESP_LOGI(GATTS_TABLE_TAG, "Indicate Sent!");
+		}else{
+			esp_ble_gatts_set_attr_value(heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data);
+    		ESP_LOGI(GATTS_TABLE_TAG, "Table Updated!");
+		}
 
-            for (int i = 0; i < 16; i++){
-                sprintf(pm_10_str, "{\"pm10\":\"%.6f\",", pm_10_arr[i]);
-                sprintf(pm_25_str, "\"pm2_5\":\"%.6f\",", pm_25_arr[i]);
-                sprintf(temp_str, "\"temp\":\"%.6f\",", temp_arr[i]);
-                sprintf(hum_str, "\"hum\":\"%.6f\"}", hum_arr[i]);
-
-                strcpy(sensor_data, pm_10_str);
-		        strcat(sensor_data, pm_25_str);
-		        strcat(sensor_data, temp_str);
-		        strcat(sensor_data, hum_str);
-
-                memcpy(ble_data, sensor_data, BUF_SIZE);
-                ESP_LOGI(TAG, "Generated String: %s", sensor_data);
-
-                //check if client notification status	
-                if(client_notify_stat == 1){
-                    //send sensor data notification to client
-                    esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, false);
-                    ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
-                }else if(client_notify_stat == 2){
-                    //send sensor data indication to client
-                    esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, true);
-                    ESP_LOGI(GATTS_TABLE_TAG, "Indicate Sent!");
-                }else{
-                    esp_ble_gatts_set_attr_value(heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data);
-                    ESP_LOGI(GATTS_TABLE_TAG, "Table Updated!");
-                }
-
-
-                // strcpy(save_string, sensor_data);
-    
-                // xTaskCreate(save_sensor_data, "SAVE_DATA", 3072, NULL, 5, NULL);
-                // vTaskDelay(2 * 1000 / portTICK_RATE_MS);
-
-            }    
-
-            // iDCT_mod(pm_10_arr);
-            // printArray(pm_10_arr, "PM10 Decompressed: ");   
-
-            // iDCT_mod(pm_25_arr);
-            // printArray(pm_25_arr, "PM25 Decompressed: ");
-
-            // iDCT_mod(temp_arr);
-            // printArray(temp_arr, "TEMP Decompressed: ");
-
-            // iDCT_mod(hum_arr);
-            // printArray(hum_arr, "HUM Decompressed: ");
-
-            // deinit_DCT();
-        }
-
-    	//delay 3 seconds
-		vTaskDelay(3000 / portTICK_RATE_MS);
+		//delay 3 seconds
+		vTaskDelay(15000 / portTICK_RATE_MS);
 	}
 }
 
@@ -569,7 +430,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             break;
         case ESP_GATTS_START_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "SERVICE_START_EVT, status %d, service_handle %d", param->start.status, param->start.service_handle);
-			xTaskCreate(send_notification, "BLE_NOTIF", 16000, NULL, 5, NULL);
+			xTaskCreate(send_notification, "BLE_NOTIF", 3072, NULL, 5, NULL);
             break;
         case ESP_GATTS_CONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_CONNECT_EVT, conn_id = %d", param->connect.conn_id);
