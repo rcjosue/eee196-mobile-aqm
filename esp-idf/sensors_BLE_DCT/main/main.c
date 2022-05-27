@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <sys/time.h>
 #include "esp_system.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
@@ -29,7 +31,7 @@
 #define PROFILE_NUM                 1
 #define PROFILE_APP_IDX             0
 #define ESP_APP_ID                  0x55
-#define SAMPLE_DEVICE_NAME          "CoE_198"
+#define SAMPLE_DEVICE_NAME          "CoE199Dv"
 #define SVC_INST_ID                 0
 
 /* The max length of characteristic value. When the gatt client write or prepare write, 
@@ -46,6 +48,8 @@
 //-- user variables --------------------------------------------------------------------------------------------------
 uint8_t ble_data[BUF_SIZE];
 char sensor_data[BUF_SIZE];
+
+bool is_readsensor_task_running = false;
 
 static const char *TAG = "INTEGRATED";
 esp_err_t ret;
@@ -97,7 +101,25 @@ float temp_arr[32];
 float hum_arr[32];
 int arr_counter = 0;
 
+//TIME
+time_t now = 0;
+
+struct tm timeinfo = { 0 };
+struct timeval cur_timeval = { 0 };
+struct timezone cur_timezone = { 0 };
+
+char timestamp_str[BUF_SIZE];
+char epoch_buf[BUF_SIZE];
+
+int ble_epoch_time_update = 0;
+
 //BLE
+bool is_ble_connected = false;
+
+uint8_t ble_notify_saved_data[BUF_SIZE];
+
+char ble_epoch_str[BUF_SIZE];
+
 static uint8_t adv_config_done       = 0;
 
 uint16_t heart_rate_handle_table[HRS_IDX_NB];
@@ -277,8 +299,87 @@ void save_sensor_data(){
     // vTaskDelete(NULL);
 }
 
+void send_stored_data()
+{
+	ESP_LOGI(TAG, "Detected initial connection to mobile node, dumping all saved data...");
+
+	//Open NVS Memory
+	err = nvs_open("storage", NVS_READWRITE, &load_data_handle);
+
+	if (err!=ESP_OK){
+		ESP_LOGE(TAG, "Error (%s) opening NVS handle!", esp_err_to_name(err));
+	}else{
+		ESP_LOGI(TAG, "Done");
+
+		//Get Read Counter from NVS
+		ESP_LOGI(TAG, "Getting max read counter value from NVS");
+
+		nvs_val_size = BUF_SIZE;
+		err = nvs_get_str(load_data_handle, "counter", max_read_counter_str, &nvs_val_size);
+
+		switch (err) {
+			case ESP_OK:
+				ESP_LOGI(TAG, "Done");
+				ESP_LOGI(TAG, "Got maximum read memory block number = %s", max_read_counter_str);
+				break;
+			case ESP_ERR_NVS_NOT_FOUND:
+				ESP_LOGE(TAG, "The value is not initialized yet!");
+				break;
+			default :
+				ESP_LOGE(TAG, "Error (%s) reading!", esp_err_to_name(err));
+		}
+
+		sscanf(max_read_counter_str, "%d", &max_read_counter);
+
+		//Restart Write Count to Zero
+		ESP_LOGI(TAG, "Restarting write counter to 0");
+		err = nvs_set_str(load_data_handle, "counter", "0");
+		err = nvs_commit(load_data_handle);
+
+		if(err!=ESP_OK){
+			ESP_LOGI(TAG, "Save Failed");
+		}else{
+			ESP_LOGI(TAG, "Save Success");
+		}
+
+		//Start Getting all stored data from memory and upload via mesh
+		for(read_counter=0; read_counter<max_read_counter; read_counter++){
+			sprintf(read_counter_str, "%d", read_counter); //convert read_counter to string
+
+	    	ESP_LOGI(TAG, "Reading string from NVS key: %s", read_counter_str);
+
+			nvs_val_size = BUF_SIZE;
+			err = nvs_get_str(load_data_handle, read_counter_str, read_counter_nvs_val, &nvs_val_size);
+
+			switch (err) {
+				case ESP_OK:
+					ESP_LOGI(TAG, "Done");
+					ESP_LOGI(TAG, "Read value = %s", read_counter_nvs_val);
+
+					//Send Stored MQTT String to Mobile via Notification
+					memcpy(ble_notify_saved_data, read_counter_nvs_val, BUF_SIZE);
+					esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_notify_saved_data, false);
+
+					ESP_LOGI(TAG, "Notification Sent!");
+
+					break;
+				case ESP_ERR_NVS_NOT_FOUND:
+					ESP_LOGE(TAG, "The value is not initialized yet!");
+					break;
+				default :
+					ESP_LOGE(TAG, "Error (%s) reading!", esp_err_to_name(err));
+			}
+		}
+
+		nvs_close(load_data_handle);
+	}
+
+    vTaskDelete(NULL);
+}
+
 void send_notification(){
 
+    is_readsensor_task_running = true;
 
 	while(1){
         init_DCT();
@@ -359,23 +460,26 @@ void send_notification(){
 		        strcat(sensor_data, temp_str);
 		        strcat(sensor_data, hum_str);
 
-                memcpy(ble_data, sensor_data, BUF_SIZE);
                 ESP_LOGI(TAG, "Generated String: %s", sensor_data);
 
-                //check if client notification status	
-                if(client_notify_stat == 1){
-                    //send sensor data notification to client
-                    esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, false);
-                    ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
-                }else if(client_notify_stat == 2){
-                    //send sensor data indication to client
-                    esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, true);
-                    ESP_LOGI(GATTS_TABLE_TAG, "Indicate Sent!");
-                }else{
-                    esp_ble_gatts_set_attr_value(heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data);
-                    ESP_LOGI(GATTS_TABLE_TAG, "Table Updated!");
-                }
+                if(is_ble_connected){
+                    ESP_LOGI(TAG, "BLE is connected!");
+                    memcpy(ble_data, sensor_data, BUF_SIZE);
 
+                    //check if client notification status	
+                    if(client_notify_stat == 1){
+                        //send sensor data notification to client
+                        esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, false);
+                        ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
+                    }else if(client_notify_stat == 2){
+                        //send sensor data indication to client
+                        esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, true);
+                        ESP_LOGI(GATTS_TABLE_TAG, "Indicate Sent!");
+                    }else{
+                        esp_ble_gatts_set_attr_value(heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data);
+                        ESP_LOGI(GATTS_TABLE_TAG, "Table Updated!");
+                    }
+                }
 
                 strcpy(save_string, sensor_data);
 
@@ -403,6 +507,25 @@ void send_notification(){
     	//delay 3 seconds
 		vTaskDelay(3000 / portTICK_RATE_MS);
 	}
+
+    is_readsensor_task_running = false;
+}
+
+//TIME
+
+void ble_update_system_time(void *arg)
+{
+	sscanf(ble_epoch_str, "%d", &ble_epoch_time_update);
+
+	//Set Updated Timeval to Updated Epoch
+	cur_timeval.tv_sec = ble_epoch_time_update;
+	settimeofday(&cur_timeval, &cur_timezone);
+
+	if(!is_readsensor_task_running){
+		xTaskCreate(send_notification, "READ_SENSOR", 3072, NULL, 5, NULL);
+	}
+
+	vTaskDelete(NULL);
 }
 
 /* Full Database Description - Used to add attributes into the database */
@@ -545,6 +668,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                 if (descr_value == 0x0001){
                     ESP_LOGI(GATTS_TABLE_TAG, "notify enable");
                 	client_notify_stat = 1;
+                    // xTaskCreate(send_stored_data, "SEND_STORED", 3072, NULL, 5, NULL);
                 }else if (descr_value == 0x0002){
                     ESP_LOGI(GATTS_TABLE_TAG, "indicate enable");
                 	client_notify_stat = 2;
@@ -557,6 +681,12 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                     esp_log_buffer_hex(GATTS_TABLE_TAG, param->write.value, param->write.len);
                 }
             }
+            
+            if (heart_rate_handle_table[IDX_CHAR_VAL_D] == param->write.handle){
+				memcpy(ble_epoch_str, param->write.value, param->write.len);
+				xTaskCreate(ble_update_system_time, "BLE_TIME", 3072, NULL, 5, NULL);
+			}
+            
             /* send response when param->write.need_rsp is true*/
             if (param->write.need_rsp){
                 esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
@@ -570,7 +700,8 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             break;
         case ESP_GATTS_START_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "SERVICE_START_EVT, status %d, service_handle %d", param->start.status, param->start.service_handle);
-			xTaskCreate(send_notification, "BLE_NOTIF", 16000, NULL, 5, NULL);
+			is_ble_connected = false;
+            // xTaskCreate(send_notification, "BLE_NOTIF", 16000, NULL, 5, NULL);
             break;
         case ESP_GATTS_CONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_CONNECT_EVT, conn_id = %d", param->connect.conn_id);
@@ -585,6 +716,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             conn_params.timeout = 400;    // timeout = 400*10ms = 4000ms
             //start sent the update connection parameters to the peer device.
             esp_ble_gap_update_conn_params(&conn_params);
+            is_ble_connected = true;
             break;
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
@@ -593,6 +725,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
 			esp_ble_gatts_set_attr_value(heart_rate_handle_table[IDX_CHAR_CFG_A], sizeof(disable_notif_cmd), &disable_notif_cmd);
 			//re-start advertising
             esp_ble_gap_start_advertising(&adv_params);
+            is_ble_connected = false;
             break;
         case ESP_GATTS_CREAT_ATTR_TAB_EVT:{
             if (param->add_attr_tab.status != ESP_GATT_OK){
@@ -610,6 +743,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             break;
         }
         case ESP_GATTS_STOP_EVT:
+            is_ble_connected = false;
         case ESP_GATTS_OPEN_EVT:
         case ESP_GATTS_CANCEL_OPEN_EVT:
         case ESP_GATTS_CLOSE_EVT:

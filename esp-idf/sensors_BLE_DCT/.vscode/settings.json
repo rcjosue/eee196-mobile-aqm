@@ -39,6 +39,7 @@
     "type_traits": "c",
     "utility": "c",
     "string_view": "c",
-    "regex": "c"
+    "regex": "c",
+    "time.h": "c"
   }
 }
