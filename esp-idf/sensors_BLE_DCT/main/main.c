@@ -45,6 +45,10 @@
 
 #define BUF_SIZE					(128)
 
+//LOC
+#define LONGITUDE			"\"longitude\":\"121.04664227522113\","
+#define LATITUDE 			"\"latitude\":\"14.553687875023439\"}}-"
+
 //-- user variables --------------------------------------------------------------------------------------------------
 uint8_t ble_data[BUF_SIZE];
 char sensor_data[BUF_SIZE];
@@ -94,7 +98,8 @@ float hum = 0;
 char temp_str[BUF_SIZE];
 char hum_str[BUF_SIZE];
 
-//Sensor Arrays
+//Data Arrays
+char tm_arr[16][100];
 float pm_10_arr[32];
 float pm_25_arr[32];
 float temp_arr[32];
@@ -108,10 +113,14 @@ struct tm timeinfo = { 0 };
 struct timeval cur_timeval = { 0 };
 struct timezone cur_timezone = { 0 };
 
-char timestamp_str[BUF_SIZE];
+char tm_str[BUF_SIZE];
 char epoch_buf[BUF_SIZE];
 
 int ble_epoch_time_update = 0;
+
+//Location
+char longitude_str[BUF_SIZE] = LONGITUDE;
+char latitude_str[BUF_SIZE] = LATITUDE;
 
 //BLE
 bool is_ble_connected = false;
@@ -217,6 +226,14 @@ static const uint8_t heart_measurement_ccc[2]      = {0x00, 0x00};
 static const uint8_t char_value[4]                 = {0x00, 0x00, 0x00, 0x00};
 
 //-- functions -------------------------------------------------------------------------------------------------------
+//TIME
+static void obtain_time(int i)
+{
+	time(&now);
+	sprintf(epoch_buf, "%ld", now);
+    sprintf(tm_arr[i], "%ld", now);
+}
+
 void printArray(float *arr, char *title)  // Array name Declared as a pointer
 {
     printf("%s", title);
@@ -423,7 +440,10 @@ void send_notification(){
 		printf("Tmp %.1f\n", temp);
 		printf("Hum %.1f\n", hum);
 
+        obtain_time(arr_counter);
+        printf("Time: %s\n", epoch_buf);
         //Store measured values to array
+        // tm_arr[arr_counter] =  *epoch_buf;
         pm_10_arr[arr_counter] = pm_10;
         pm_25_arr[arr_counter] = pm_25;
         temp_arr[arr_counter] = temp;
@@ -450,12 +470,15 @@ void send_notification(){
             // deinit_DCT();            
 
             for (int i = 0; i < 16; i++){
-                sprintf(pm_10_str, "{\"pm10\":\"%.6f\",", pm_10_arr[i]);
+                sprintf(tm_str, "{\"ts\":%s000,", tm_arr[i]);
+                sprintf(pm_10_str, "\"values\":{\"pm10\":\"%.6f\",", pm_10_arr[i]);
                 sprintf(pm_25_str, "\"pm2_5\":\"%.6f\",", pm_25_arr[i]);
                 sprintf(temp_str, "\"temp\":\"%.6f\",", temp_arr[i]);
-                sprintf(hum_str, "\"hum\":\"%.6f\"}", hum_arr[i]);
+                sprintf(hum_str, "\"hum\":\"%.6f\",", hum_arr[i]);
+                //DON'T FORGET TO FIX JSON FORMATTING FOR LOCATION '}}'
 
-                strcpy(sensor_data, pm_10_str);
+                strcpy(sensor_data, tm_str);
+                strcat(sensor_data, pm_10_str);
 		        strcat(sensor_data, pm_25_str);
 		        strcat(sensor_data, temp_str);
 		        strcat(sensor_data, hum_str);
@@ -668,7 +691,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                 if (descr_value == 0x0001){
                     ESP_LOGI(GATTS_TABLE_TAG, "notify enable");
                 	client_notify_stat = 1;
-                    // xTaskCreate(send_stored_data, "SEND_STORED", 3072, NULL, 5, NULL);
+                    xTaskCreate(send_stored_data, "SEND_STORED", 3072, NULL, 5, NULL);
                 }else if (descr_value == 0x0002){
                     ESP_LOGI(GATTS_TABLE_TAG, "indicate enable");
                 	client_notify_stat = 2;
