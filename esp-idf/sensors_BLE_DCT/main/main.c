@@ -46,8 +46,8 @@
 #define BUF_SIZE					(128)
 
 //LOC
-#define LONGITUDE			"\"longitude\":\"121.04664227522113\","
-#define LATITUDE 			"\"latitude\":\"14.553687875023439\"}}-"
+#define LONGI			"\"long\":\"121.04664227522113\","
+#define LATI			"\"lat\":\"14.553687875023439\"}}-"
 
 //-- user variables --------------------------------------------------------------------------------------------------
 uint8_t ble_data[BUF_SIZE];
@@ -119,8 +119,8 @@ char epoch_buf[BUF_SIZE];
 int ble_epoch_time_update = 0;
 
 //Location
-char longitude_str[BUF_SIZE] = LONGITUDE;
-char latitude_str[BUF_SIZE] = LATITUDE;
+char longi_str[BUF_SIZE] = LONGI;
+char lati_str[BUF_SIZE] = LATI;
 
 //BLE
 bool is_ble_connected = false;
@@ -482,6 +482,8 @@ void send_notification(){
 		        strcat(sensor_data, pm_25_str);
 		        strcat(sensor_data, temp_str);
 		        strcat(sensor_data, hum_str);
+                strcat(sensor_data, longi_str);
+		        strcat(sensor_data, lati_str);
 
                 ESP_LOGI(TAG, "Generated String: %s", sensor_data);
 
