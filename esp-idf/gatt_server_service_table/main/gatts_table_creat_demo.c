@@ -214,14 +214,14 @@ void send_notification(){
 		printf("temperature: %.2f\n", temp);
         //sprintf(epoch_buf, "%ld", now);
 
-		//sprintf(timestamp_str, "{\"ts\":%s000,", epoch_buf);
+		sprintf(timestamp_str, "{\"ts\": 0000000,");
 		sprintf(pm_10_str, "\"values\":{\"pm10\":\"%.2f\",", pm_10);
 		sprintf(pm_25_str, "\"pm2_5\":\"%.2f\",", pm_25);
         sprintf(temp_str, "\"temperature\":\"%.2f\",", temp);
-		sprintf(hum_str, "\"humidity\":\"%.2f\"}", hum); 
+		sprintf(hum_str, "\"humidity\":\"%.2f\"}}", hum); 
 		
-		//strcpy(sensor_data, timestamp_str);
-		strcpy(sensor_data, pm_10_str);
+		strcpy(sensor_data, timestamp_str);
+		strcat(sensor_data, pm_10_str);
 		strcat(sensor_data, pm_25_str);
 		strcat(sensor_data, temp_str);
 		strcat(sensor_data, hum_str);

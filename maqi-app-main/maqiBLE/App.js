@@ -9,9 +9,7 @@
 import React, {Component} from 'react';
 //import type {Node} from 'react';
 import {
-  //SafeAreaView,  ScrollView,  StatusBar,   useColorScheme,
-  NativeModules,
-  NativeEventEmitter,
+  //SafeAreaView,  ScrollView,  StatusBar,   useColorScheme,  NativeModules,  NativeEventEmitter,
   StyleSheet,
   Text,
   View,
@@ -20,6 +18,8 @@ import {
 import {BleManager} from 'react-native-ble-plx';
 import NetInfo from '@react-native-community/netinfo';
 import base64 from 'react-native-base64';
+import {AsyncStorage} from '@react-native-community/async-storage';
+import init from 'react_native_mqtt';
 
 // import {
 //   Colors,
@@ -53,6 +53,15 @@ import base64 from 'react-native-base64';
 //     </SafeAreaView>
 //   );
 // };
+init({
+  size: 10000,
+  storageBackend: AsyncStorage,
+  defaultExpires: 1000 * 3600 * 24,
+  enableCache: true,
+  reconnect: true,
+  sync: {},
+});
+
 export default class App extends Component {
   constructor(props) {
     super(props);
@@ -80,7 +89,7 @@ export default class App extends Component {
   }
 
   componentDidMount() {
-    //this.intervalID = setInterval(() => this.tick(), 1000);
+    this.intervalID = setInterval(() => this.updateTime(), 1000);
     NetInfo.addEventListener('connectionChange', connectionInfo => {
       if (connectionInfo.type == 'wifi') {
         this.setState({info: 'Wifi'});
@@ -120,6 +129,23 @@ export default class App extends Component {
       // Check if it is a device you are looking for based on advertisement data
       // or other criteria.
       if (device.name === 'CoE_199') {
+        client = new Paho.MQTT.Client(
+          'thingsboard.cloud.io',
+          9090,
+          '/mqtt',
+          'Zach',
+        );
+        client.onConnectionLost = onConnectionLost;
+        client.onMessageArrived = onMessageArrived;
+        client.connect();
+        function onConnectionLost(responseObject) {
+          if (responseObject.errorCode !== 0) {
+            console.log('onConnectionLost:' + responseObject.errorMessage);
+          }
+        }
+        function onMessageArrived(message) {
+          console.log('onMessageArrived:' + message.payloadString);
+        }
         // Stop scanning as it's not necessary if you are scanning for one device.
         this.info('Found AQM Device: ' + device.name);
         this.manager.stopDeviceScan();
@@ -180,6 +206,14 @@ export default class App extends Component {
         const decode_data = base64.decode(data);
         const split_data = decode_data.split('-', 1);
         const mqtt_payload = '' + split_data;
+        message = new Paho.MQTT.Message(
+          mqtt_payload,
+          'v1/devices/me/telemetry',
+          1,
+          0,
+        );
+        message.destinationName = 'v1/devices/me/telemetry';
+        client.publish(message);
         // NetInfo.getConnectionInfo().then(connectionInfo => {
         //   this.con_type(connectionInfo.type);
         //   const isWifi = this.state.con_type;
@@ -201,13 +235,15 @@ export default class App extends Component {
       },
     );
   }
+
   render() {
     return (
       <View style={styles.container}>
-        <Text style={styles.welcome}>Welcome to BLE Daemon!</Text>
-        <Text style={styles.info}>{this.state.info}</Text>
-        <Text style={styles.info}>{this.state.dump}</Text>
-        <Text style={styles.info}>{this.state.payload}</Text>
+        <Text style={styles.welcome}>Welcome to BLE Client!</Text>
+        <Text style={styles.info}>Info: {this.state.info}</Text>
+        <Text style={styles.info}>Dump: {this.state.dump}</Text>
+        <Text style={styles.info}>Payload: {this.state.payload}</Text>
+        <Text style={styles.info}>Time: {this.state.time}</Text>
       </View>
     );
   }
