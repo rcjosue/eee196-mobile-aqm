@@ -11,6 +11,7 @@
 #include "driver/gpio.h"
 #include "sdkconfig.h"
 #include "esp_bt.h"
+#include <math.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -43,15 +44,30 @@
 #define ADV_CONFIG_FLAG             (1 << 0)
 #define SCAN_RSP_CONFIG_FLAG        (1 << 1)
 
-#define BUF_SIZE					(128)
+#define BUF_SIZE					(180)
 
 //LOC
 #define LONGI			"\"long\":\"121.04664227522113\","
 #define LATI			"\"lat\":\"14.553687875023439\"}}-"
 
 //-- user variables --------------------------------------------------------------------------------------------------
-uint8_t ble_data[BUF_SIZE];
-char sensor_data[BUF_SIZE];
+uint8_t ble_data[180];
+char sensor_data[180];
+
+//For Testing
+char ref_data[180];
+float pm_10_ref[16];
+float pm_25_ref[16];
+float temp_ref[16];
+float hum_ref[16];
+char pm_10_stref[BUF_SIZE];
+char pm_25_stref[BUF_SIZE];
+char temp_stref[BUF_SIZE];
+char hum_stref[BUF_SIZE];
+clock_t start, end;
+double cpu_time_used;
+float rmse, nrmse, psnr, mean_ko;
+float maxVal, minVal;
 
 bool is_readsensor_task_running = false;
 
@@ -226,6 +242,35 @@ static const uint8_t heart_measurement_ccc[2]      = {0x00, 0x00};
 static const uint8_t char_value[4]                 = {0x00, 0x00, 0x00, 0x00};
 
 //-- functions -------------------------------------------------------------------------------------------------------
+//TESTING
+float rmsValue (float arr1[], float arr2[]){
+    float square = 0.0;
+    float mean = 0.0, root = 0.0;
+    mean_ko = 0.0;
+    maxVal = minVal = arr1[0];
+
+    //Calculate Square and Sum of Orig and MinMaxVal
+    for (int i = 0; i < 16; i++){
+        square += pow((double)(arr1[i]-arr2[i]),2);
+
+        mean_ko += arr1[i];
+
+        if (arr1[i] < minVal) { minVal = arr1[i]; } 
+        if (arr1[i] > maxVal) { maxVal = arr1[i]; }
+    }
+
+    //Calculate Mean
+    mean = (square / (float)(16));
+
+    //Mean of Orig
+    mean_ko /= (float)(16);
+
+    //Calculate Root
+    root = sqrt(mean);
+
+    return root;
+}
+
 //TIME
 static void obtain_time(int i)
 {
@@ -399,7 +444,7 @@ void send_notification(){
     is_readsensor_task_running = true;
 
 	while(1){
-        init_DCT();
+        // init_DCT();
 
 		//-- SDS011 Read -------------------------
 		printf("=== Reading SDS ===\n" );
@@ -444,16 +489,17 @@ void send_notification(){
         printf("Time: %s\n", epoch_buf);
         //Store measured values to array
         // tm_arr[arr_counter] =  *epoch_buf;
-        pm_10_arr[arr_counter] = pm_10;
-        pm_25_arr[arr_counter] = pm_25;
-        temp_arr[arr_counter] = temp;
-        hum_arr[arr_counter] = hum;
+        pm_10_ref[arr_counter] = pm_10_arr[arr_counter] = pm_10;
+        pm_25_ref[arr_counter] = pm_25_arr[arr_counter] = pm_25;
+        temp_ref[arr_counter] = temp_arr[arr_counter] = temp;
+        hum_ref[arr_counter] = hum_arr[arr_counter] = hum;
 
 		arr_counter++;
 
         if (arr_counter == 16){
+            // start = clock();
             init_DCT();
-
+            
             DCT_mod(pm_10_arr);
             printArray(pm_10_arr, "PM10 Compressed: ");
 
@@ -466,67 +512,128 @@ void send_notification(){
             DCT_mod(hum_arr);
             printArray(hum_arr, "HUM Compressed: ");
 
-            arr_counter = 0;
-            // deinit_DCT();            
+            // deinit_DCT(); 
+            // end = clock();
+            // cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+            // printf("~~~~~~~~TIME TO COMP: %f\n", cpu_time_used);
+
+            arr_counter = 0;           
 
             for (int i = 0; i < 16; i++){
                 sprintf(tm_str, "{\"ts\":%s000,", tm_arr[i]);
-                sprintf(pm_10_str, "\"values\":{\"pm10\":\"%.6f\",", pm_10_arr[i]);
-                sprintf(pm_25_str, "\"pm2_5\":\"%.6f\",", pm_25_arr[i]);
-                sprintf(temp_str, "\"temp\":\"%.6f\",", temp_arr[i]);
-                sprintf(hum_str, "\"hum\":\"%.6f\",", hum_arr[i]);
-                //DON'T FORGET TO FIX JSON FORMATTING FOR LOCATION '}}'
 
-                strcpy(sensor_data, tm_str);
-                strcat(sensor_data, pm_10_str);
-		        strcat(sensor_data, pm_25_str);
-		        strcat(sensor_data, temp_str);
-		        strcat(sensor_data, hum_str);
-                strcat(sensor_data, longi_str);
-		        strcat(sensor_data, lati_str);
+                // if (fabs(pm_10_arr[i]) < 0.00001){
+                //     sprintf(pm_10_str, "\"values\":{\"pm10\":\"\",");
+                // } else { sprintf(pm_10_str, "\"values\":{\"pm10\":\"%g\",", pm_10_arr[i]); }
+                // if (fabs(pm_25_arr[i]) < 0.00001){
+                //     sprintf(pm_25_str, "\"pm25\":\"\",");
+                // } else { sprintf(pm_25_str, "\"pm25\":\"%g\",", pm_25_arr[i]); }
+                // if (fabs(temp_arr[i]) < 0.00001){
+                //     sprintf(temp_str, "\"temp\":\"\",");
+                // } else { sprintf(temp_str, "\"temp\":\"%g\",", temp_arr[i]); }
+                // if (fabs(hum_arr[i]) < 0.00001){
+                //     sprintf(hum_str, "\"hum\":\"\",");
+                // } else { sprintf(hum_str, "\"hum\":\"%g\",", hum_arr[i]); }
+                
+                // strcpy(sensor_data, tm_str);
+                // strcat(sensor_data, pm_10_str);
+		        // strcat(sensor_data, pm_25_str);
+		        // strcat(sensor_data, temp_str);
+		        // strcat(sensor_data, hum_str);
+                // strcat(sensor_data, longi_str);
+		        // strcat(sensor_data, lati_str);
 
-                ESP_LOGI(TAG, "Generated String: %s", sensor_data);
+                //Testing
+                // printArray(hum_ref, "HUM Raw: ");
+                // sprintf(pm_10_stref, "\"values\":{\"pm10\":\"%.2f\",", pm_10_ref[i]);
+                // sprintf(pm_25_stref, "\"pm25\":\"%.2f\",", pm_25_ref[i]);
+                // sprintf(temp_stref, "\"temp\":\"%.2f\",", temp_ref[i]);
+                // sprintf(hum_stref, "\"hum\":\"%.2f\",", hum_ref[i]);
+                // strcpy(ref_data, tm_str);
+                // strcat(ref_data, pm_10_stref);
+		        // strcat(ref_data, pm_25_stref);
+		        // strcat(ref_data, temp_stref);
+		        // strcat(ref_data, hum_stref);
+                // strcat(ref_data, longi_str);
+		        // strcat(ref_data, lati_str);
 
-                if(is_ble_connected){
-                    ESP_LOGI(TAG, "BLE is connected!");
-                    memcpy(ble_data, sensor_data, BUF_SIZE);
+                // printf("~~~~~~~~Length of Strings: %d | %d\n", strlen(sensor_data), strlen(ref_data));
+                // ESP_LOGI(TAG, "Generated String: %s", sensor_data);
+                // ESP_LOGI(TAG, "Uncompres String: %s", ref_data);
 
-                    //check if client notification status	
-                    if(client_notify_stat == 1){
-                        //send sensor data notification to client
-                        esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, false);
-                        ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
-                    }else if(client_notify_stat == 2){
-                        //send sensor data indication to client
-                        esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, true);
-                        ESP_LOGI(GATTS_TABLE_TAG, "Indicate Sent!");
-                    }else{
-                        esp_ble_gatts_set_attr_value(heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data);
-                        ESP_LOGI(GATTS_TABLE_TAG, "Table Updated!");
-                    }
-                }
+                // start = clock();
+                // if(is_ble_connected){
+                //     ESP_LOGI(TAG, "BLE is connected!");
+                //     // memcpy(ble_data, sensor_data, 180);
+                //     memcpy(ble_data, ref_data, BUF_SIZE);
 
-                strcpy(save_string, sensor_data);
+                //     //check if client notification status	
+                //     if(client_notify_stat == 1){
+                //         //send sensor data notification to client
+                //         esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, false);
+                //         ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
+                //     }else if(client_notify_stat == 2){
+                //         //send sensor data indication to client
+                //         esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, true);
+                //         ESP_LOGI(GATTS_TABLE_TAG, "Indicate Sent!");
+                //     }else{
+                //         esp_ble_gatts_set_attr_value(heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data);
+                //         ESP_LOGI(GATTS_TABLE_TAG, "Table Updated!");
+                //     }
+                // }
+                // end = clock();
+                // cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+                // printf("~~~~~~~~TIME TO SEND COMP: %f\n", cpu_time_used);
 
-                save_sensor_data();
-                // xTaskCreate(save_sensor_data, "SAVE_DATA", 3072, NULL, 5, NULL);
-                vTaskDelay(2 * 1000 / portTICK_RATE_MS);
+                // strcpy(save_string, sensor_data);
+
+                // save_sensor_data();
+                // // xTaskCreate(save_sensor_data, "SAVE_DATA", 3072, NULL, 5, NULL);
+                // vTaskDelay(2 * 1000 / portTICK_RATE_MS);
 
             }    
 
-            // iDCT_mod(pm_10_arr);
-            // printArray(pm_10_arr, "PM10 Decompressed: ");   
+            // init_DCT();
+            iDCT_mod(pm_10_arr);
+            printArray(pm_10_arr, "PM10 Decomp: ");
+            printArray(pm_10_ref, "PM10 Origin: ");
 
-            // iDCT_mod(pm_25_arr);
-            // printArray(pm_25_arr, "PM25 Decompressed: ");
+            iDCT_mod(pm_25_arr);
+            printArray(pm_25_arr, "PM25 Decomp: ");
+            printArray(pm_25_ref, "PM25 Origin: ");
 
-            // iDCT_mod(temp_arr);
-            // printArray(temp_arr, "TEMP Decompressed: ");
+            iDCT_mod(temp_arr);
+            printArray(temp_arr, "TEMP Decomp: ");
+            printArray(temp_ref, "TEMP Origin: ");
 
-            // iDCT_mod(hum_arr);
-            // printArray(hum_arr, "HUM Decompressed: ");
+            iDCT_mod(hum_arr);
+            printArray(hum_arr, "HUM Decomp: ");
+            printArray(hum_ref, "HUM Origin: ");
 
             deinit_DCT();
+
+            //TESTING
+            rmse = rmsValue(pm_10_ref, pm_10_arr);
+            nrmse = rmse/mean_ko;
+            psnr = 20*log10((maxVal - minVal) / rmse);
+            printf("PM10 ---> RMSE: %f | NRMSE: %f  PSNR: %f\n", rmse, nrmse, psnr);
+
+            rmse = rmsValue(pm_25_ref, pm_25_arr);
+            nrmse = rmse/mean_ko;
+            psnr = 20*log10((maxVal - minVal) / rmse);
+            printf("PM25 ---> RMSE: %f | NRMSE: %f  PSNR: %f\n", rmse, nrmse, psnr);
+
+            rmse = rmsValue(temp_ref, temp_arr);
+            nrmse = rmse/mean_ko;
+            psnr = 20*log10((maxVal - minVal) / rmse);
+            printf("TEMP ---> RMSE: %f | NRMSE: %f  PSNR: %f\n", rmse, nrmse, psnr);
+
+            rmse = rmsValue(hum_ref, hum_arr);
+            nrmse = rmse/mean_ko;
+            psnr = 20*log10((maxVal - minVal) / rmse);
+            printf("HUM ---> RMSE: %f | NRMSE: %f  PSNR: %f\n", rmse, nrmse, psnr);
+
+            // vTaskDelay(15000 / portTICK_RATE_MS);
         }
 
     	//delay 3 seconds
