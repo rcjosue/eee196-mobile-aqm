@@ -100,13 +100,6 @@ export default class App extends Component {
     console.log('Mounted');
     this.scanAndConnect();
     this.setState({info: 'Mounted'});
-
-    // const subscription = this.manager.onStateChange(state => {
-    //   if (state === 'PoweredOn') {
-    //     this.scanAndConnect();
-    //     subscription.remove();
-    //   }
-    // }, true);
   }
 
   scanAndConnect() {
@@ -128,24 +121,25 @@ export default class App extends Component {
 
       // Check if it is a device you are looking for based on advertisement data
       // or other criteria.
-      if (device.name === 'CoE_199') {
-        client = new Paho.MQTT.Client(
-          'thingsboard.cloud.io',
-          9090,
-          '/mqtt',
-          'Zach',
-        );
-        client.onConnectionLost = onConnectionLost;
-        client.onMessageArrived = onMessageArrived;
-        client.connect();
-        function onConnectionLost(responseObject) {
-          if (responseObject.errorCode !== 0) {
-            console.log('onConnectionLost:' + responseObject.errorMessage);
-          }
-        }
-        function onMessageArrived(message) {
-          console.log('onMessageArrived:' + message.payloadString);
-        }
+      if (device.name === 'CoE199Dv') {
+        // client = new Paho.MQTT.Client(
+        //   'thingsboard.cloud',
+        //   9090,
+        //   '/mqtt',
+        //   '231cfe90-df3b-11ec-b5bf-ff45c37940c6',
+        // );
+        // client.onConnectionLost = onConnectionLost;
+        // client.onMessageArrived = onMessageArrived;
+        // client.connect();
+        // function onConnectionLost(responseObject) {
+        //   if (responseObject.errorCode !== 0) {
+        //     console.log('onConnectionLost:' + responseObject.errorMessage);
+        //   }
+        // }
+        // function onMessageArrived(message) {
+        //   console.log('onMessageArrived:' + message.payloadString);
+        // }
+
         // Stop scanning as it's not necessary if you are scanning for one device.
         this.info('Found AQM Device: ' + device.name);
         this.manager.stopDeviceScan();
@@ -163,6 +157,7 @@ export default class App extends Component {
             console.log('Setting notifications');
             return this.setupNotifications(device);
           })
+
           // .then(device => {
           //   this.info('Connected to BLE');
           //   console.log('Connected to BLE');
@@ -185,14 +180,14 @@ export default class App extends Component {
     const time_epoch = Date.parse(timestamp);
     const time_int = parseInt(time_epoch) / 1000;
     const time_base64 = base64.encode('' + time_int);
-    // device.writeCharacteristicWithoutResponseForService(
-    //   '000000ff-0000-1000-8000-00805f9b34fb',
-    //   '0000ff04-0000-1000-8000-00805f9b34fb',
-    //   time_base64,
-    // );
+    device.writeCharacteristicWithoutResponseForService(
+      '000000ff-0000-1000-8000-00805f9b34fb',
+      '0000ff04-0000-1000-8000-00805f9b34fb',
+      time_base64,
+    );
     this.setState({time: time_base64});
-    console.log(time_int);
-    console.log(time_base64);
+    console.log('time: ' + time_int);
+    console.log('time base: ' + time_base64);
     device.monitorCharacteristicForService(
       '000000ff-0000-1000-8000-00805f9b34fb',
       '0000ff01-0000-1000-8000-00805f9b34fb',
@@ -206,31 +201,32 @@ export default class App extends Component {
         const decode_data = base64.decode(data);
         const split_data = decode_data.split('-', 1);
         const mqtt_payload = '' + split_data;
-        message = new Paho.MQTT.Message(
-          mqtt_payload,
-          'v1/devices/me/telemetry',
-          1,
-          0,
-        );
-        message.destinationName = 'v1/devices/me/telemetry';
-        client.publish(message);
-        // NetInfo.getConnectionInfo().then(connectionInfo => {
-        //   this.con_type(connectionInfo.type);
-        //   const isWifi = this.state.con_type;
-        //   if (isWifi == 'wifi' || isWifi == 'cellular') {
-        //     message = new Paho.MQTT.Message(
-        //       mqtt_payload,
-        //       'v1/devices/me/telemetry',
-        //       1,
-        //       0,
-        //     );
-        //     message.destinationName = 'v1/devices/me/telemetry';
-        //     this.save_payload(mqtt_payload);
-        //     client.publish(message);
-        //   } else {
-        //     this.save_payload(mqtt_payload);
-        //   }
-        // });
+
+        //   message = new Paho.MQTT.Message(
+        //     mqtt_payload,
+        //     'v1/devices/me/telemetry',
+        //     1,
+        //     0,
+        //   );
+        //   message.destinationName = 'v1/devices/me/telemetry';
+        //   client.publish(message);
+        //   // NetInfo.getConnectionInfo().then(connectionInfo => {
+        //   //   this.con_type(connectionInfo.type);
+        //   //   const isWifi = this.state.con_type;
+        //   //   if (isWifi == 'wifi' || isWifi == 'cellular') {
+        //   //     message = new Paho.MQTT.Message(
+        //   //       mqtt_payload,
+        //   //       'v1/devices/me/telemetry',
+        //   //       1,
+        //   //       0,
+        //   //     );
+        //   //     message.destinationName = 'v1/devices/me/telemetry';
+        //   //     this.save_payload(mqtt_payload);
+        //   //     client.publish(message);
+        //   //   } else {
+        //   //     this.save_payload(mqtt_payload);
+        //   //   }
+        //   // });
         this.setState({payload: mqtt_payload});
       },
     );
