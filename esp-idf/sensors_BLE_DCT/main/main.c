@@ -48,7 +48,7 @@
 
 //LOC
 #define LONGI			"\"long\":\"121.04664227522113\","
-#define LATI			"\"lat\":\"14.553687875023439\"}}-"
+#define LATI			"\"lat\":\"14.553687875023439\"}}_"
 
 //-- user variables --------------------------------------------------------------------------------------------------
 uint8_t ble_data[180];
@@ -522,26 +522,26 @@ void send_notification(){
             for (int i = 0; i < 16; i++){
                 sprintf(tm_str, "{\"ts\":%s000,", tm_arr[i]);
 
-                // if (fabs(pm_10_arr[i]) < 0.00001){
-                //     sprintf(pm_10_str, "\"values\":{\"pm10\":\"\",");
-                // } else { sprintf(pm_10_str, "\"values\":{\"pm10\":\"%g\",", pm_10_arr[i]); }
-                // if (fabs(pm_25_arr[i]) < 0.00001){
-                //     sprintf(pm_25_str, "\"pm25\":\"\",");
-                // } else { sprintf(pm_25_str, "\"pm25\":\"%g\",", pm_25_arr[i]); }
-                // if (fabs(temp_arr[i]) < 0.00001){
-                //     sprintf(temp_str, "\"temp\":\"\",");
-                // } else { sprintf(temp_str, "\"temp\":\"%g\",", temp_arr[i]); }
-                // if (fabs(hum_arr[i]) < 0.00001){
-                //     sprintf(hum_str, "\"hum\":\"\",");
-                // } else { sprintf(hum_str, "\"hum\":\"%g\",", hum_arr[i]); }
+                if (fabs(pm_10_arr[i]) < 0.00001){
+                    sprintf(pm_10_str, "\"values\":{\"pm10\":\"\",");
+                } else { sprintf(pm_10_str, "\"values\":{\"pm10\":\"%g\",", pm_10_arr[i]); }
+                if (fabs(pm_25_arr[i]) < 0.00001){
+                    sprintf(pm_25_str, "\"pm25\":\"\",");
+                } else { sprintf(pm_25_str, "\"pm25\":\"%g\",", pm_25_arr[i]); }
+                if (fabs(temp_arr[i]) < 0.00001){
+                    sprintf(temp_str, "\"temp\":\"\",");
+                } else { sprintf(temp_str, "\"temp\":\"%g\",", temp_arr[i]); }
+                if (fabs(hum_arr[i]) < 0.00001){
+                    sprintf(hum_str, "\"hum\":\"\",");
+                } else { sprintf(hum_str, "\"hum\":\"%g\",", hum_arr[i]); }
                 
-                // strcpy(sensor_data, tm_str);
-                // strcat(sensor_data, pm_10_str);
-		        // strcat(sensor_data, pm_25_str);
-		        // strcat(sensor_data, temp_str);
-		        // strcat(sensor_data, hum_str);
-                // strcat(sensor_data, longi_str);
-		        // strcat(sensor_data, lati_str);
+                strcpy(sensor_data, tm_str);
+                strcat(sensor_data, pm_10_str);
+		        strcat(sensor_data, pm_25_str);
+		        strcat(sensor_data, temp_str);
+		        strcat(sensor_data, hum_str);
+                strcat(sensor_data, longi_str);
+		        strcat(sensor_data, lati_str);
 
                 //Testing
                 // printArray(hum_ref, "HUM Raw: ");
@@ -558,29 +558,29 @@ void send_notification(){
 		        // strcat(ref_data, lati_str);
 
                 // printf("~~~~~~~~Length of Strings: %d | %d\n", strlen(sensor_data), strlen(ref_data));
-                // ESP_LOGI(TAG, "Generated String: %s", sensor_data);
+                ESP_LOGI(TAG, "Generated String: %s", sensor_data);
                 // ESP_LOGI(TAG, "Uncompres String: %s", ref_data);
 
                 // start = clock();
-                // if(is_ble_connected){
-                //     ESP_LOGI(TAG, "BLE is connected!");
-                //     // memcpy(ble_data, sensor_data, 180);
-                //     memcpy(ble_data, ref_data, BUF_SIZE);
+                if(is_ble_connected){
+                    ESP_LOGI(TAG, "BLE is connected!");
+                    memcpy(ble_data, sensor_data, 180);
+                    // memcpy(ble_data, ref_data, BUF_SIZE);
 
-                //     //check if client notification status	
-                //     if(client_notify_stat == 1){
-                //         //send sensor data notification to client
-                //         esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, false);
-                //         ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
-                //     }else if(client_notify_stat == 2){
-                //         //send sensor data indication to client
-                //         esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, true);
-                //         ESP_LOGI(GATTS_TABLE_TAG, "Indicate Sent!");
-                //     }else{
-                //         esp_ble_gatts_set_attr_value(heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data);
-                //         ESP_LOGI(GATTS_TABLE_TAG, "Table Updated!");
-                //     }
-                // }
+                    //check if client notification status	
+                    if(client_notify_stat == 1){
+                        //send sensor data notification to client
+                        esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, false);
+                        ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
+                    }else if(client_notify_stat == 2){
+                        //send sensor data indication to client
+                        esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, true);
+                        ESP_LOGI(GATTS_TABLE_TAG, "Indicate Sent!");
+                    }else{
+                        esp_ble_gatts_set_attr_value(heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data);
+                        ESP_LOGI(GATTS_TABLE_TAG, "Table Updated!");
+                    }
+                }
                 // end = clock();
                 // cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
                 // printf("~~~~~~~~TIME TO SEND COMP: %f\n", cpu_time_used);
@@ -589,7 +589,8 @@ void send_notification(){
 
                 // save_sensor_data();
                 // // xTaskCreate(save_sensor_data, "SAVE_DATA", 3072, NULL, 5, NULL);
-                // vTaskDelay(2 * 1000 / portTICK_RATE_MS);
+                //Originally 2 secs
+                vTaskDelay(3 * 1000 / portTICK_RATE_MS);
 
             }    
 
@@ -735,6 +736,7 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
                 ESP_LOGE(GATTS_TABLE_TAG, "advertising start failed");
             }else{
                 ESP_LOGI(GATTS_TABLE_TAG, "advertising start successfully");
+                start = clock();
             }
             break;
         case ESP_GAP_BLE_ADV_STOP_COMPLETE_EVT:
@@ -753,6 +755,9 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
                   param->update_conn_params.conn_int,
                   param->update_conn_params.latency,
                   param->update_conn_params.timeout);
+            end = clock();
+            cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+            printf("~~~~~~~~TIME TO CONNECT: %f\n", cpu_time_used);
             break;
         default:
             break;
