@@ -114,7 +114,7 @@ export default class App extends Component {
         this.setState({info: 'Error: ' + error.message});
         console.log(error);
         //console.log(JSON.stringify(error));
-        //this.scanAndConnect();
+        this.scanAndConnect();
         // Handle error (scanning will be stopped automatically)
         return;
       }
@@ -123,10 +123,10 @@ export default class App extends Component {
       // or other criteria.
       if (device.name === 'CoE199Dv') {
         // client = new Paho.MQTT.Client(
-        //   'thingsboard.cloud',
-        //   9090,
-        //   '/mqtt',
-        //   '231cfe90-df3b-11ec-b5bf-ff45c37940c6',
+        //   host:'thingsboard.cloud',
+        //   port:9090,
+        //   //'/mqtt',
+        //   clientId'231cfe90-df3b-11ec-b5bf-ff45c37940c6',
         // );
         // client.onConnectionLost = onConnectionLost;
         // client.onMessageArrived = onMessageArrived;
@@ -146,7 +146,7 @@ export default class App extends Component {
         console.log('Connecting ' + device.name);
 
         device
-          .connect({requestMTU: 183})
+          .connect({requestMTU: 280})
           .then(device => {
             this.info('Discovering services and characteristics');
             console.log('Discovering services and characteristics');
@@ -164,7 +164,8 @@ export default class App extends Component {
           // })
           .catch(error => {
             this.setState({info: 'Error: ' + error.message});
-            //this.scanAndConnect();
+
+            this.scanAndConnect();
           });
       }
     });
@@ -176,6 +177,7 @@ export default class App extends Component {
       '0000ff01-0000-1000-8000-00805f9b34fb',
       'AQA=',
     );
+    console.log('first ok');
     const timestamp = this.state.time;
     const time_epoch = Date.parse(timestamp);
     const time_int = parseInt(time_epoch) / 1000;
@@ -185,21 +187,25 @@ export default class App extends Component {
       '0000ff04-0000-1000-8000-00805f9b34fb',
       time_base64,
     );
+    console.log('second ok');
     this.setState({time: time_base64});
     console.log('time: ' + time_int);
     console.log('time base: ' + time_base64);
+    console.log('third becu');
     device.monitorCharacteristicForService(
       '000000ff-0000-1000-8000-00805f9b34fb',
       '0000ff01-0000-1000-8000-00805f9b34fb',
       (error, characteristic) => {
         if (error) {
+          console.log('third ok');
           this.info('Error: ' + error.message);
+          this.scanAndConnect();
           return;
         }
         this.updatePair(characteristic.uuid, characteristic.value);
         const data = this.state.values['0000ff01-0000-1000-8000-00805f9b34fb'];
         const decode_data = base64.decode(data);
-        const split_data = decode_data.split('-', 1);
+        const split_data = decode_data.split('_', 1);
         const mqtt_payload = '' + split_data;
 
         //   message = new Paho.MQTT.Message(
@@ -228,6 +234,7 @@ export default class App extends Component {
         //   //   }
         //   // });
         this.setState({payload: mqtt_payload});
+        console.log(mqtt_payload);
       },
     );
   }
