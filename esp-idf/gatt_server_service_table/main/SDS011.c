@@ -35,8 +35,8 @@
 #define ECHO_TEST_RTS  (UART_PIN_NO_CHANGE)
 #define ECHO_TEST_CTS  (UART_PIN_NO_CHANGE)
 
-#define BUF_SIZE (128)
-#define BAUD_RATE       (9600)
+#define BUF_SIZE 				(128)
+#define BAUD_RATE       		(9600)
 #define PACKET_READ_TICS        (800 / portTICK_RATE_MS)
 #define ECHO_UART_PORT          (UART_NUM_2)
 

@@ -23,6 +23,20 @@
     "*.HLASM*": "hlasm",
     "*.HLA*": "hlasm",
     "iostream": "cpp",
-    "esp_gatt_common_api.h": "c"
+    "esp_gatt_common_api.h": "c",
+    "cmath": "c",
+    "complex": "c",
+    "optional": "c",
+    "istream": "c",
+    "ostream": "c",
+    "ratio": "c",
+    "system_error": "c",
+    "array": "c",
+    "functional": "c",
+    "tuple": "c",
+    "type_traits": "c",
+    "utility": "c",
+    "random": "c",
+    "event_groups.h": "c"
   }
 }
