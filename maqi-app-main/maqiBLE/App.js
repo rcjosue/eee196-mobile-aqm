@@ -18,7 +18,7 @@ import {
 import {BleManager} from 'react-native-ble-plx';
 import NetInfo from '@react-native-community/netinfo';
 import base64 from 'react-native-base64';
-import {AsyncStorage} from '@react-native-community/async-storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import init from 'react_native_mqtt';
 
 // import {
@@ -53,6 +53,7 @@ import init from 'react_native_mqtt';
 //     </SafeAreaView>
 //   );
 // };
+
 init({
   size: 10000,
   storageBackend: AsyncStorage,
@@ -70,6 +71,8 @@ export default class App extends Component {
       info: null,
       dump: null,
       device: null,
+      con_type: null,
+      counter: null,
       latitude: null,
       longitude: null,
       time: null,
@@ -87,36 +90,21 @@ export default class App extends Component {
   info(message) {
     this.setState({info: message});
   }
-
-  async save_payload(item) {
-    //Save from mqtt_payload_0 to mqtt_payload_64
-    var value = await AsyncStorage.getItem('counter');
-    if (value == null || value == '64') {
-      await AsyncStorage.setItem('counter', '0');
-      value = await AsyncStorage.getItem('counter');
-    } else {
-      value = await AsyncStorage.getItem('counter');
-    }
-    this.counter(value);
-    const key = 'mqtt_payload_' + value;
-    this.key(key);
-    await AsyncStorage.setItem(key, item);
-    const payload = await AsyncStorage.getItem(key);
-    this.payload(payload);
-    const val_int = parseInt(value);
-    const new_val_int = val_int + 1;
-    const new_val = '' + new_val_int;
-    await AsyncStorage.setItem('counter', new_val);
-    return;
+  key(message) {
+    this.setState({key: message});
+  }
+  con_type(message) {
+    this.setState({con_type: message});
   }
 
   componentDidMount() {
     this.intervalID = setInterval(() => this.updateTime(), 1000);
     NetInfo.addEventListener('connectionChange', connectionInfo => {
-      if (connectionInfo.type == 'wifi') {
-        this.setState({info: 'Wifi'});
+      const isWifi = this.con_type(connectionInfo.type);
+      if (isWifi == 'wifi') {
       } else {
-        this.setState({dump: 'Not WiFi"!'});
+        this.con_type(isWifi);
+        this.setState({dump: 'Change is not "To WiFi"!'});
       }
     });
     console.log('Mounted');
@@ -192,6 +180,28 @@ export default class App extends Component {
       }
     });
   }
+  async save_payload(item) {
+    //Save from mqtt_payload_0 to mqtt_payload_64
+    var value = await AsyncStorage.getItem('counter');
+    if (value == null || value == '64') {
+      await AsyncStorage.setItem('counter', '0');
+      value = await AsyncStorage.getItem('counter');
+    } else {
+      value = await AsyncStorage.getItem('counter');
+    }
+    this.setState({counter: value});
+    const key = 'mqtt_payload_' + value;
+    this.setState({key: key});
+    await AsyncStorage.setItem(key, item);
+    const payload = await AsyncStorage.getItem(key);
+    this.setState({payload: payload});
+    const val_int = parseInt(value);
+    const new_val_int = val_int + 1;
+    const new_val = '' + new_val_int;
+    await AsyncStorage.setItem('counter', new_val);
+    return;
+  }
+
   async setupNotifications(device) {
     var message = '';
     device.writeCharacteristicWithoutResponseForService(
@@ -230,6 +240,15 @@ export default class App extends Component {
         const split_data = decode_data.split('_', 1);
         const mqtt_payload = '' + split_data;
 
+        NetInfo.refresh().then(connectionInfo => {
+          this.con_type(connectionInfo.type);
+          const isWifi = this.state.con_type;
+          if (isWifi == 'wifi') {
+            this.setState({dump: ''});
+          }
+          this.con_type(isWifi);
+        });
+
         //   message = new Paho.MQTT.Message(
         //     mqtt_payload,
         //     'v1/devices/me/telemetry',
@@ -267,6 +286,14 @@ export default class App extends Component {
         <Text style={styles.info}>Dump: {this.state.dump}</Text>
         <Text style={styles.info}>Payload: {this.state.payload}</Text>
         <Text style={styles.info}>Time: {this.state.time}</Text>
+        <Text style={styles.info}>The connection is {this.state.con_type}</Text>
+        <Text style={styles.info}>
+          The MQTT Counter is {this.state.counter}
+        </Text>
+        <Text style={styles.info}>The Key is {this.state.key}</Text>
+        <Text style={styles.info}>
+          The MQTT Payload string is {this.state.payload}
+        </Text>
       </View>
     );
   }
