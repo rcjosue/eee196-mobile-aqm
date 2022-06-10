@@ -88,6 +88,28 @@ export default class App extends Component {
     this.setState({info: message});
   }
 
+  async save_payload(item) {
+    //Save from mqtt_payload_0 to mqtt_payload_64
+    var value = await AsyncStorage.getItem('counter');
+    if (value == null || value == '64') {
+      await AsyncStorage.setItem('counter', '0');
+      value = await AsyncStorage.getItem('counter');
+    } else {
+      value = await AsyncStorage.getItem('counter');
+    }
+    this.counter(value);
+    const key = 'mqtt_payload_' + value;
+    this.key(key);
+    await AsyncStorage.setItem(key, item);
+    const payload = await AsyncStorage.getItem(key);
+    this.payload(payload);
+    const val_int = parseInt(value);
+    const new_val_int = val_int + 1;
+    const new_val = '' + new_val_int;
+    await AsyncStorage.setItem('counter', new_val);
+    return;
+  }
+
   componentDidMount() {
     this.intervalID = setInterval(() => this.updateTime(), 1000);
     NetInfo.addEventListener('connectionChange', connectionInfo => {
@@ -227,12 +249,10 @@ export default class App extends Component {
         //   //       0,
         //   //     );
         //   //     message.destinationName = 'v1/devices/me/telemetry';
-        //   //     this.save_payload(mqtt_payload);
         //   //     client.publish(message);
-        //   //   } else {
-        //   //     this.save_payload(mqtt_payload);
         //   //   }
         //   // });
+        this.save_payload(mqtt_payload);
         this.setState({payload: mqtt_payload});
         console.log(mqtt_payload);
       },
