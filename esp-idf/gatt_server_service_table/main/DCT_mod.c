@@ -18,7 +18,7 @@
 static const char *TAG = "dsps_dct";
 esp_err_t DCT_ret;
 
-const int N = 64;
+const int N = 16;
 
 /* Data Structure to keep track of index for cepstral compression */
 struct ind
@@ -66,7 +66,7 @@ void deinit_DCT(){
     dsps_fft2r_deinit_fc32();
 }
 
-struct ind trans[64];
+struct ind trans[16];
 
 void DCT_mod(float* in)
 {

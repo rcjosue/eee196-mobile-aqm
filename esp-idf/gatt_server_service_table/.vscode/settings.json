@@ -37,6 +37,17 @@
     "type_traits": "c",
     "utility": "c",
     "random": "c",
-    "event_groups.h": "c"
+    "event_groups.h": "c",
+    "deque": "c",
+    "list": "c",
+    "string": "c",
+    "unordered_map": "c",
+    "unordered_set": "c",
+    "vector": "c",
+    "string_view": "c",
+    "initializer_list": "c",
+    "regex": "c",
+    "*.inc": "c",
+    "stdio.h": "c"
   }
 }
