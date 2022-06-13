@@ -77,6 +77,7 @@ export default class App extends Component {
       longitude: null,
       time: null,
       payload: null,
+      mqttPayload: null,
       error: null,
     };
   }
@@ -99,14 +100,29 @@ export default class App extends Component {
 
   componentDidMount() {
     this.intervalID = setInterval(() => this.updateTime(), 1000);
-    NetInfo.addEventListener('connectionChange', connectionInfo => {
-      const isWifi = this.con_type(connectionInfo.type);
-      if (isWifi == 'wifi') {
+    // Subscribe to connection changes
+    NetInfo.addEventListener(connectionInfo => {
+      this.con_type(connectionInfo.type);
+      const isWifi = this.state.con_type;
+      if (isWifi == 'wifi' || isWifi == 'cellular') {
+        this.dump_mem();
+        this.setState({dump: 'Not connected to network!'});
       } else {
         this.con_type(isWifi);
-        this.setState({dump: 'Change is not "To WiFi"!'});
+        this.setState({dump: 'Not connected to network!'});
       }
     });
+    // NetInfo.refresh().then(connectionInfo => {
+    //   this.con_type(connectionInfo.type);
+    //   const isWifi = this.state.con_type;
+    //   if (isWifi == 'wifi' || isWifi == 'cellular') {
+    //     this.dump_mem();
+    //   } else {
+    //     this.con_type(isWifi);
+    //     this.setState({dump: 'Not connected to network!'});
+    //   }
+    // });
+
     console.log('Mounted');
     this.scanAndConnect();
     this.setState({info: 'Mounted'});
@@ -117,68 +133,70 @@ export default class App extends Component {
     console.log('Scanning');
 
     this.manager.startDeviceScan(null, null, (error, device) => {
-      console.log('Device:');
-      console.log(device.name);
-      console.log('Scanning devices');
+      //console.log('Device: ' + device.name);
       if (error) {
         this.setState({info: 'Error: ' + error.message});
         console.log(error);
-        //console.log(JSON.stringify(error));
         this.scanAndConnect();
         // Handle error (scanning will be stopped automatically)
         return;
       }
-
       // Check if it is a device you are looking for based on advertisement data
       // or other criteria.
-      if (device.name === 'CoE199Dv') {
-        // client = new Paho.MQTT.Client(
-        //   host:'thingsboard.cloud',
-        //   port:9090,
-        //   //'/mqtt',
-        //   clientId'231cfe90-df3b-11ec-b5bf-ff45c37940c6',
-        // );
-        // client.onConnectionLost = onConnectionLost;
-        // client.onMessageArrived = onMessageArrived;
-        // client.connect();
-        // function onConnectionLost(responseObject) {
-        //   if (responseObject.errorCode !== 0) {
-        //     console.log('onConnectionLost:' + responseObject.errorMessage);
-        //   }
-        // }
-        // function onMessageArrived(message) {
-        //   console.log('onMessageArrived:' + message.payloadString);
-        // }
-
-        // Stop scanning as it's not necessary if you are scanning for one device.
-        this.info('Found AQM Device: ' + device.name);
-        this.manager.stopDeviceScan();
-        console.log('Connecting ' + device.name);
-
-        device
-          .connect({requestMTU: 280})
-          .then(device => {
-            this.info('Discovering services and characteristics');
-            console.log('Discovering services and characteristics');
-            return device.discoverAllServicesAndCharacteristics();
-          })
-          .then(device => {
-            this.info('Setting notifications');
-            console.log('Setting notifications');
-            return this.setupNotifications(device);
-          })
-
-          // .then(device => {
-          //   this.info('Connected to BLE');
-          //   console.log('Connected to BLE');
-          // })
-          .catch(error => {
-            this.setState({info: 'Error: ' + error.message});
-
-            this.scanAndConnect();
-          });
+      if (
+        device.name === 'maqiBLE_1' ||
+        device.name === 'maqiBLE_2' ||
+        device.name === 'maqiBLE_3'
+      ) {
+        this.setupDevice(device);
       }
     });
+  }
+  setupDevice(device) {
+    // Stop scanning as it's not necessary if you are scanning for one device.
+    this.info('Found AQM Device: ' + device.name);
+    this.manager.stopDeviceScan();
+    console.log('Connecting ' + device.name);
+    const device_id = 'Device_4'; //this.state.device.name; move to top
+    const topic = `tb/mqtt-integration-guide/sensors/${device_id}/telemetry`;
+    client = new Paho.MQTT.Client('18.140.52.158', 8083, '/mqtt', '');
+    client.onConnectionLost = onConnectionLost;
+    client.onMessageArrived = onMessageArrived;
+    client.connect({onSuccess: onConnect});
+    function onConnect() {
+      console.log('connected');
+    }
+    function onConnectionLost(responseObject) {
+      if (responseObject.errorCode !== 0) {
+        console.log('onConnectionLost:' + responseObject.errorMessage);
+      }
+    }
+    function onMessageArrived(message) {
+      console.log('onMessageArrived:'); // + message.payloadString);
+    }
+
+    device
+      .connect({requestMTU: 280})
+      .then(device => {
+        this.info('Discovering services and characteristics');
+        console.log('Discovering services and characteristics');
+        return device.discoverAllServicesAndCharacteristics();
+      })
+      .then(device => {
+        this.info('Setting notifications');
+        console.log('Setting notifications');
+        return this.setupNotifications(device);
+      })
+
+      // .then(device => {
+      //   this.info('Connected to BLE');
+      //   console.log('Connected to BLE');
+      // })
+      .catch(error => {
+        this.setState({info: 'Error: ' + error.message});
+
+        this.scanAndConnect();
+      });
   }
   async save_payload(item) {
     //Save from mqtt_payload_0 to mqtt_payload_64
@@ -200,6 +218,47 @@ export default class App extends Component {
     const new_val = '' + new_val_int;
     await AsyncStorage.setItem('counter', new_val);
     return;
+  }
+
+  async dump_mem() {
+    //console.log(item);
+    this.setState({dump: 'Dumping All Contents!'});
+    var message = '';
+    //  '{"ts":1654951056000,"pm10":"","pm25":"1","temp":"1","hum":"","long":"121.04664227522113","lat":"14.553687875023439","device_id":"Device_4"}';
+    const device_ID = 'Device_4'; //this.state.device.name;
+    const topic = `tb/mqtt-integration-guide/sensors/${device_ID}/telemetry`;
+    client = new Paho.MQTT.Client('18.140.52.158', 8083, '/mqtt', '');
+    client.onConnectionLost = onConnectionLost;
+    client.onMessageArrived = onMessageArrived;
+    client.connect({onSuccess: onConnect, onFailure: onConnectionLost});
+    var dump_counter = 0;
+
+    async function onConnect() {
+      while (dump_counter < 64) {
+        const dump_key = 'mqtt_payload_' + dump_counter;
+        const mqtt_payload_dump = await AsyncStorage.getItem(dump_key);
+        if (mqtt_payload_dump == null) {
+          dump_counter = 64;
+        } else {
+          message = new Paho.MQTT.Message(mqtt_payload_dump, topic, 1, 0);
+          message.destinationName = topic;
+          client.publish(message);
+          await AsyncStorage.removeItem(dump_key);
+          dump_counter = dump_counter + 1;
+        }
+      }
+      return;
+    }
+
+    function onConnectionLost(responseObject) {
+      console.log('disconnected');
+      if (responseObject.errorCode !== 0) {
+        console.log('onConnectionLost:' + responseObject.errorMessage);
+      }
+    }
+    function onMessageArrived(message) {
+      console.log('onMessageArrived:'); // + message.payloadString);
+    }
   }
 
   async setupNotifications(device) {
@@ -238,72 +297,115 @@ export default class App extends Component {
         const data = this.state.values['0000ff01-0000-1000-8000-00805f9b34fb'];
         const decode_data = base64.decode(data);
         const split_data = decode_data.split('_', 1);
-        const mqtt_payload = '' + split_data;
+        const device_id = device.name;
+        const mqtt_payload = split_data + ',"device_id":"' + device_id + '"}';
 
-        NetInfo.refresh().then(connectionInfo => {
-          this.con_type(connectionInfo.type);
-          const isWifi = this.state.con_type;
-          if (isWifi == 'wifi') {
-            this.setState({dump: ''});
-          }
-          this.con_type(isWifi);
-        });
-
-        //   message = new Paho.MQTT.Message(
-        //     mqtt_payload,
-        //     'v1/devices/me/telemetry',
-        //     1,
-        //     0,
-        //   );
-        //   message.destinationName = 'v1/devices/me/telemetry';
-        //   client.publish(message);
-        //   // NetInfo.getConnectionInfo().then(connectionInfo => {
-        //   //   this.con_type(connectionInfo.type);
-        //   //   const isWifi = this.state.con_type;
-        //   //   if (isWifi == 'wifi' || isWifi == 'cellular') {
-        //   //     message = new Paho.MQTT.Message(
-        //   //       mqtt_payload,
-        //   //       'v1/devices/me/telemetry',
-        //   //       1,
-        //   //       0,
-        //   //     );
-        //   //     message.destinationName = 'v1/devices/me/telemetry';
-        //   //     client.publish(message);
-        //   //   }
-        //   // });
-        this.save_payload(mqtt_payload);
-        this.setState({payload: mqtt_payload});
-        console.log(mqtt_payload);
+        this.send_payload(mqtt_payload);
       },
     );
   }
 
+  async send_payload(item) {
+    const start = new Date().getTime();
+    // let test_split = item.split(/[:|,]/);
+    // if (test_split[4].slice(1, -1) == '') test_split[4] = '"0"';
+    // if (test_split[6].slice(1, -1) == '') test_split[6] = '"0"';
+    // if (test_split[8].slice(1, -1) == '') test_split[8] = '"0"';
+    // if (test_split[10].slice(1, -1) == '') test_split[10] = '"0"';
+
+    // let mqttPayload = JSON.stringify({
+    //   timestamp: test_split[1],
+    //   pm10: test_split[4].slice(1, -1),
+    //   pm25: test_split[6].slice(1, -1),
+    //   temperature: test_split[8].slice(1, -1),
+    //   humidity: test_split[10].slice(1, -1),
+    //   latitude: test_split[12].slice(1, -1),
+    //   longitude: test_split[14].slice(1, -4),
+    //   device_id: 'Device_4', //this.state.device,
+    // });
+    // console.log('payload', mqttPayload);
+
+    NetInfo.refresh().then(connectionInfo => {
+      this.con_type(connectionInfo.type);
+      const isWifi = this.state.con_type;
+
+      const device_id = 'Device_4'; //this.state.device.name;
+      const topic = `tb/mqtt-integration-guide/sensors/${device_id}/telemetry`;
+
+      if (isWifi == 'wifi' || isWifi == 'cellular') {
+        const message = new Paho.MQTT.Message(item, topic, 1, 0);
+        message.destinationName = topic;
+        client.publish(message);
+        const end = new Date().getTime();
+        console.log('sending time = ' + (end - start));
+        this.save_payload(item);
+      } else {
+        this.save_payload(item);
+      }
+    });
+    this.save_payload(item);
+    this.setState({payload: item});
+    console.log(item);
+  }
+
   render() {
     return (
-      <View style={styles.container}>
-        <Text style={styles.welcome}>Welcome to BLE Client!</Text>
-        <Text style={styles.info}>Info: {this.state.info}</Text>
-        <Text style={styles.info}>Dump: {this.state.dump}</Text>
-        <Text style={styles.info}>Payload: {this.state.payload}</Text>
-        <Text style={styles.info}>Time: {this.state.time}</Text>
-        <Text style={styles.info}>The connection is {this.state.con_type}</Text>
-        <Text style={styles.info}>
-          The MQTT Counter is {this.state.counter}
-        </Text>
-        <Text style={styles.info}>The Key is {this.state.key}</Text>
-        <Text style={styles.info}>
-          The MQTT Payload string is {this.state.payload}
-        </Text>
-      </View>
+      <>
+        <View style={styles.header}>
+          <Text style={styles.title}>MAQI</Text>
+        </View>
+
+        <View style={styles.filler} />
+        <View style={styles.container}>
+          <Text style={styles.welcome}>Welcome to BLE Client!</Text>
+          <Text style={styles.info}>Info: {this.state.info}</Text>
+          <Text style={styles.info}>Dump: {this.state.dump}</Text>
+
+          <Text style={styles.infoheader}>Notify</Text>
+          <Text style={styles.info}>Payload: {this.state.payload}</Text>
+          <Text style={styles.info}>Time: {this.state.time}</Text>
+
+          <Text style={styles.infoheader}>MQTT and Save</Text>
+          <Text style={styles.info}>
+            The connection is {this.state.con_type}
+          </Text>
+          <Text style={styles.info}>
+            The MQTT Counter is {this.state.counter}
+          </Text>
+          <Text style={styles.info}>The Key is {this.state.key}</Text>
+          <Text style={styles.info}>
+            The MQTT Payload string is {this.state.payload}
+          </Text>
+        </View>
+        <View style={styles.filler} />
+      </>
     );
   }
 }
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flex: 3,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F5FCFF',
+  },
+  filler: {
+    height: 40,
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FDFDFD',
+  },
+  header: {
+    height: 80,
+    paddingTop: 38,
+    backgroundColor: '#187bcd',
+  },
+  title: {
+    textAlign: 'center',
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
   welcome: {
     fontSize: 20,
