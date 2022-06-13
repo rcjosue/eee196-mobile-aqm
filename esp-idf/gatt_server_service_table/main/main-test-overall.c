@@ -32,7 +32,9 @@
 #define PROFILE_NUM                 1
 #define PROFILE_APP_IDX             0
 #define ESP_APP_ID                  0x55
-#define SAMPLE_DEVICE_NAME          "CoE199Dv"
+#define SAMPLE_DEVICE_NAME          "maqiBLE_1"
+//#define SAMPLE_DEVICE_NAME          "maqiBLE_2"
+//#define SAMPLE_DEVICE_NAME          "maqiBLE_3"
 #define SVC_INST_ID                 0
 
 /* The max length of characteristic value. When the gatt client write or prepare write, 
@@ -45,11 +47,16 @@
 #define SCAN_RSP_CONFIG_FLAG        (1 << 1)
 
 #define BUF_SIZE					(180)
-#define DCT_N					    32
+#define DCT_N					    16
 
 //LOC
 #define LONGI			"\"long\":\"121.04664227522113\","
-#define LATI			"\"lat\":\"14.553687875023439\"}}_"
+#define LATI			"\"lat\":\"14.553687875023439\"_"
+// #define LONGI			"\"long\":\"121.04679174229999\","
+// #define LATI			"\"lat\":\"14.554068956300023\"_"
+// #define LONGI			"\"long\":\"121.04654272271163\","
+// #define LATI			"\"lat\":\"14.553987432550239\"_"
+
 
 //-- user variables --------------------------------------------------------------------------------------------------
 uint8_t ble_data[180];
@@ -113,16 +120,17 @@ char temp_str[BUF_SIZE];
 char hum_str[BUF_SIZE];
 
 //Data Arrays
-char tm_arr[16][100] = {"1654657050","1654657110","1654657170","1654657230","1654657290","1654657350","1654657410","1654657470","1654657530","1654657590","1654657650","1654657710","1654657770","1654657830","1654657890","1654657950"};
-float hum_arr[32] = {18.14999962,18.44999981,18.0,20.14999962,17.89999962,18.69999981,18.94999981,18.400000570000003,19.30000019,17.599999429999997,19.14999962,18.05000019,19.0,18.39999962,18.75,18.30000019};
-float pm_10_arr[32]= {15.400000095,16.35000038,16.0,16.14999962,15.400000095,15.799999714999998,15.900000094999998,15.900000570000001,16.44999981,15.75,16.35000038,16.05000019,16.94999981,16.39999962,15.94999981,16.30000019};
-float pm_25_arr[32] = {31.70000076,31.70000076,31.70000076,31.60000038,31.5,31.650000570000003,31.70000076,31.70000076,31.70000076,31.79999924,31.79999924,31.89999962,31.89999962,32.0,32.049999235,32.149999615};
-float temp_arr[32] = {73.900001525,72.40000153,73.79999924,71.30000305,70.89999771000001,75.5,74.849998475,74.900001525,74.150001525,74.40000153,75.04999924,76.10000228999999,76.799999235,77.69999695,72.5,71.69999695};
+char tm_arr[16][100];
+float hum_arr[32];
+float pm_10_arr[32];
+float pm_25_arr[32];
+float temp_arr[32];
 
-float hum_ref[16] = {18.14999962,18.44999981,18.0,20.14999962,17.89999962,18.69999981,18.94999981,18.400000570000003,19.30000019,17.599999429999997,19.14999962,18.05000019,19.0,18.39999962,18.75,18.30000019};
-float pm_10_ref[16]= {15.400000095,16.35000038,16.0,16.14999962,15.400000095,15.799999714999998,15.900000094999998,15.900000570000001,16.44999981,15.75,16.35000038,16.05000019,16.94999981,16.39999962,15.94999981,16.30000019};
-float pm_25_ref[16] = {31.70000076,31.70000076,31.70000076,31.60000038,31.5,31.650000570000003,31.70000076,31.70000076,31.70000076,31.79999924,31.79999924,31.89999962,31.89999962,32.0,32.049999235,32.149999615};
-float temp_ref[16] = {73.900001525,72.40000153,73.79999924,71.30000305,70.89999771000001,75.5,74.849998475,74.900001525,74.150001525,74.40000153,75.04999924,76.10000228999999,76.799999235,77.69999695,72.5,71.69999695};
+//Data Arrays (reference)
+float hum_ref[16];
+float pm_10_ref[16];
+float pm_25_ref[16];
+float temp_ref[16];
 
 
 int arr_counter = 0;
@@ -294,7 +302,7 @@ void printArray(float *arr, char *title)  // Array name Declared as a pointer
 }
 
 void save_sensor_data(){
-	//ESP_LOGI(TAG, "String to Save: %s", save_string);
+	ESP_LOGI(TAG, "String to Save: %s", save_string);
 
 	//Save String to Memory
 	//ESP_LOGI(TAG, "Opening Non-Volatile Storage (NVS) handle");
@@ -341,7 +349,7 @@ void save_sensor_data(){
 		if(err!=ESP_OK){
 			ESP_LOGI(TAG, "Sensor Data Save to NVS Failed");
 		}else{
-			//ESP_LOGI(TAG, "Sensor Data Save to NVS Success");
+			ESP_LOGI(TAG, "Sensor Data Save to NVS Success");
 		}
 
 		//Update Write Counter and Save to NVS
@@ -412,6 +420,12 @@ void send_stored_data()
 		//Start Getting all stored data from memory and upload via mesh
         start = clock();
         for(read_counter=0; read_counter<max_read_counter; read_counter++){
+            if (read_counter == 15){                
+                end = clock();
+                cpu_time_used = ((long double) (end - start)) / CLOCKS_PER_SEC;
+                printf("~~~~~~~~TIME TO DUMP REF: %Lf\n", cpu_time_used);
+                start = clock();
+            }
 			sprintf(read_counter_str, "%d", read_counter); //convert read_counter to string
 
 	    	ESP_LOGI(TAG, "Reading string from NVS key: %s", read_counter_str);
@@ -421,7 +435,7 @@ void send_stored_data()
 
 			switch (err) {
 				case ESP_OK:
-					ESP_LOGI(TAG, "Done");
+					//ESP_LOGI(TAG, "Done");
 					ESP_LOGI(TAG, "Read value = %s", read_counter_nvs_val);
 
 					//Send Stored MQTT String to Mobile via Notification
@@ -440,7 +454,7 @@ void send_stored_data()
 		}
         end = clock();
         cpu_time_used = ((long double) (end - start)) / CLOCKS_PER_SEC;
-        printf("~~~~~~~~TIME TO DUMP: %Lf\n", cpu_time_used);
+        printf("~~~~~~~~TIME TO DUMP COMP: %Lf\n", cpu_time_used);
 
 		nvs_close(load_data_handle);
 	}
@@ -455,57 +469,98 @@ void send_notification(){
 	while(1){
         
         // init_DCT();
-		// //-- SDS011 Read -------------------------
-		// printf("=== Reading SDS ===\n" );
-		// //Wake Up SDS
-		// SDS_setwake();
+		//-- SDS011 Read -------------------------
+		printf("=== Reading SDS ===\n" );
+		//Wake Up SDS
+		SDS_setwake();
 
-		// vTaskDelay(3000 / portTICK_RATE_MS);
+		vTaskDelay(3000 / portTICK_RATE_MS);
 
-		// do{
-		// 	SDS_ret = readSDS();
-		// 	SDS_errorhandler(SDS_ret);
+		do{
+			SDS_ret = readSDS();
+			SDS_errorhandler(SDS_ret);
 
-		// 	pm_10 = get_pm_10();
-		// 	pm_25 = get_pm_25();
-		// }while((SDS_ret!=0) || (pm_10<pm_25));
+			pm_10 = get_pm_10();
+			pm_25 = get_pm_25();
+		}while((SDS_ret!=0) || (pm_10<pm_25));
 
-		// printf("PM10: %.2f\n", pm_10);
-		// printf("PM2.5: %.2f\n", pm_25);
+		printf("PM10: %.2f\n", pm_10);
+		printf("PM2.5: %.2f\n", pm_25);
 
-		// //Set SDS to sleep
-		// SDS_setsleep();
+		//Set SDS to sleep
+		SDS_setsleep();
 
-		// //-- DHT22 Read ---------------------------
-		// printf("=== Reading DHT ===\n" );
+		//-- DHT22 Read ---------------------------
+		printf("=== Reading DHT ===\n" );
 
-		// do{
-		// 	DHT_ret = readDHT();
-		// 	DHT_errorhandler(DHT_ret);
+		do{
+			DHT_ret = readDHT();
+			DHT_errorhandler(DHT_ret);
 
-		// 	if(DHT_ret!=0){
-		// 		vTaskDelay(1000 / portTICK_RATE_MS);
-		// 	}
-		// }while(DHT_ret != 0);
+			if(DHT_ret!=0){
+				vTaskDelay(1000 / portTICK_RATE_MS);
+			}
+		}while(DHT_ret != 0);
 
-		// temp = getTemperature();
-		// hum = getHumidity();
+		temp = getTemperature();
+		hum = getHumidity();
 
-		// printf("Tmp %.1f\n", temp);
-		// printf("Hum %.1f\n", hum);
+		printf("Tmp %.1f\n", temp);
+		printf("Hum %.1f\n", hum);
 
-        // obtain_time(arr_counter);
-        // printf("Time: %s\n", epoch_buf);
-        // //Store measured values to array
-        // tm_arr[arr_counter] =  *epoch_buf;
-        // pm_10_ref[arr_counter] = pm_10_arr[arr_counter] = pm_10;
-        // pm_25_ref[arr_counter] = pm_25_arr[arr_counter] = pm_25;
-        // temp_ref[arr_counter] = temp_arr[arr_counter] = temp;
-        // hum_ref[arr_counter] = hum_arr[arr_counter] = hum;
+        obtain_time(arr_counter);
+        printf("Time: %s\n", epoch_buf);
+        //Store measured values to array
+        
+        //tm_arr[arr_counter] = *epoch_buf;
+        pm_10_ref[arr_counter] = pm_10_arr[arr_counter] = pm_10;
+        pm_25_ref[arr_counter] = pm_25_arr[arr_counter] = pm_25;
+        temp_ref[arr_counter] = temp_arr[arr_counter] = temp;
+        hum_ref[arr_counter] = hum_arr[arr_counter] = hum;
 		
-        //arr_counter++;
+        // sprintf(tm_str, "{\"ts\":%s000,", tm_arr[arr_counter]);
+        // sprintf(pm_10_stref, "\"pm10\":\"%.2f\",", pm_10);
+        // sprintf(pm_25_stref, "\"pm25\":\"%.2f\",", pm_25);
+        // sprintf(temp_stref, "\"temp\":\"%.2f\",", temp);
+        // sprintf(hum_stref, "\"hum\":\"%.2f\",", hum);
+        // strcpy(ref_data, tm_str);
+        // strcat(ref_data, pm_10_stref);
+        // strcat(ref_data, pm_25_stref);
+        // strcat(ref_data, temp_stref);
+        // strcat(ref_data, hum_stref);
+        // strcat(ref_data, longi_str);
+        // strcat(ref_data, lati_str);
 
-        if (1){
+        arr_counter++;
+        // start = clock();
+        // if(is_ble_connected){
+        //     ////ESP_LOGI(TAG, "BLE is connected!");
+        //     // memcpy(ble_data, sensor_data, 180);
+        //     memcpy(ble_data, ref_data, BUF_SIZE);
+            
+        //     //check if client notification status	
+        //     if(client_notify_stat == 1){
+        //         //send sensor data notification to client
+        //         esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, false);
+        //         ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
+        //     }else if(client_notify_stat == 2){
+        //         //send sensor data indication to client
+        //         esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, true);
+        //         ESP_LOGI(GATTS_TABLE_TAG, "Indicate Sent!");
+        //     }else{
+        //         esp_ble_gatts_set_attr_value(heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data);
+        //         ESP_LOGI(GATTS_TABLE_TAG, "Table Updated!");
+        //     }
+        // }
+        // end = clock();
+        // cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+        // printf("~~~~~~~~TIME TO SEND REF: %Lf\n", cpu_time_used);
+
+        //strcpy(save_string, ref_data);
+        //save_sensor_data();
+
+
+        if (arr_counter == DCT_N){
             // start = clock();
             init_DCT();
             
@@ -533,8 +588,8 @@ void send_notification(){
                 sprintf(tm_str, "{\"ts\":%s000,", tm_arr[i]);
 
                 if (fabs(pm_10_arr[i]) < 0.00001){
-                    sprintf(pm_10_str, "\"values\":{\"pm10\":\"\",");
-                } else { sprintf(pm_10_str, "\"values\":{\"pm10\":\"%g\",", pm_10_arr[i]); }
+                    sprintf(pm_10_str, "\"pm10\":\"\",");
+                } else { sprintf(pm_10_str, "\"pm10\":\"%g\",", pm_10_arr[i]); }
                 if (fabs(pm_25_arr[i]) < 0.00001){
                     sprintf(pm_25_str, "\"pm25\":\"\",");
                 } else { sprintf(pm_25_str, "\"pm25\":\"%g\",", pm_25_arr[i]); }
@@ -554,8 +609,8 @@ void send_notification(){
 		        strcat(sensor_data, lati_str);
 
                 //Testing
-                //printArray(hum_ref, "HUM Raw: ");
-                sprintf(pm_10_stref, "\"values\":{\"pm10\":\"%.2f\",", pm_10_ref[i]);
+                // printArray(hum_ref, "HUM Raw: ");
+                sprintf(pm_10_stref, "\"pm10\":\"%.2f\",", pm_10_ref[i]);
                 sprintf(pm_25_stref, "\"pm25\":\"%.2f\",", pm_25_ref[i]);
                 sprintf(temp_stref, "\"temp\":\"%.2f\",", temp_ref[i]);
                 sprintf(hum_stref, "\"hum\":\"%.2f\",", hum_ref[i]);
@@ -568,10 +623,10 @@ void send_notification(){
 		        strcat(ref_data, lati_str);
 
                 printf("%d,%d,%d\n", strlen(sensor_data), strlen(ref_data), strlen(ref_data)-strlen(sensor_data));
-                ////ESP_LOGI(TAG, "Generated String: %s", sensor_data);
-                ////ESP_LOGI(TAG, "Uncompres String: %s", ref_data);
+                ESP_LOGI(TAG, "Generated String: %s", sensor_data);
+                ESP_LOGI(TAG, "Uncompres String: %s", ref_data);
 
-               
+               start = clock();
                 if(is_ble_connected){
                     ////ESP_LOGI(TAG, "BLE is connected!");
                     memcpy(ble_data, sensor_data, 180);
@@ -581,14 +636,14 @@ void send_notification(){
                     if(client_notify_stat == 1){
                         //send sensor data notification to client
                         esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, false);
-                        //ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
+                        ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
                     }else if(client_notify_stat == 2){
                         //send sensor data indication to client
                         esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, true);
-                        //ESP_LOGI(GATTS_TABLE_TAG, "Indicate Sent!");
+                        ESP_LOGI(GATTS_TABLE_TAG, "Indicate Sent!");
                     }else{
                         esp_ble_gatts_set_attr_value(heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data);
-                        ////ESP_LOGI(GATTS_TABLE_TAG, "Table Updated!");
+                        ESP_LOGI(GATTS_TABLE_TAG, "Table Updated!");
                     }
                 }
                 end = clock();
@@ -605,23 +660,23 @@ void send_notification(){
             }    
 
             // init_DCT();
-            iDCT_mod(pm_10_arr);
-            printArray(pm_10_arr, "PM10 Decomp: ");
-            // printArray(pm_10_ref, "PM10 Origin: ");
+            // iDCT_mod(pm_10_arr);
+            // printArray(pm_10_arr, "PM10 Decomp: ");
+            // // printArray(pm_10_ref, "PM10 Origin: ");
 
-            iDCT_mod(pm_25_arr);
-            printArray(pm_25_arr, "PM25 Decomp: ");
-            // printArray(pm_25_ref, "PM25 Origin: ");
+            // iDCT_mod(pm_25_arr);
+            // printArray(pm_25_arr, "PM25 Decomp: ");
+            // // printArray(pm_25_ref, "PM25 Origin: ");
 
-            iDCT_mod(temp_arr);
-            printArray(temp_arr, "TEMP Decomp: ");
-            // printArray(temp_ref, "TEMP Origin: ");
+            // iDCT_mod(temp_arr);
+            // printArray(temp_arr, "TEMP Decomp: ");
+            // // printArray(temp_ref, "TEMP Origin: ");
 
-            iDCT_mod(hum_arr);
-            printArray(hum_arr, "HUM Decomp: ");
-            // printArray(hum_ref, "HUM Origin: ");
+            // iDCT_mod(hum_arr);
+            // printArray(hum_arr, "HUM Decomp: ");
+            // // printArray(hum_ref, "HUM Origin: ");
 
-            deinit_DCT();
+            // deinit_DCT();
 
             //TESTING
             /*
@@ -846,12 +901,12 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_MTU_EVT, MTU %d", param->mtu.mtu);
             break;
         case ESP_GATTS_CONF_EVT:
-            //// ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_CONF_EVT, status = %d, attr_handle %d", param->conf.status, param->conf.handle);
+            ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_CONF_EVT, status = %d, attr_handle %d", param->conf.status, param->conf.handle);
             break;
         case ESP_GATTS_START_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "SERVICE_START_EVT, status %d, service_handle %d", param->start.status, param->start.service_handle);
 			is_ble_connected = false;
-            // xTaskCreate(send_notification, "BLE_NOTIF", 16000, NULL, 5, NULL);
+            //xTaskCreate(send_notification, "BLE_NOTIF", 16000, NULL, 5, NULL);
             break;
         case ESP_GATTS_CONNECT_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_CONNECT_EVT, conn_id = %d", param->connect.conn_id);
