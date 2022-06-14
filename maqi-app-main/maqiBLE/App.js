@@ -154,6 +154,7 @@ export default class App extends Component {
   }
   setupDevice(device) {
     // Stop scanning as it's not necessary if you are scanning for one device.
+    this.setState({device: device.name});
     this.info('Found AQM Device: ' + device.name);
     this.manager.stopDeviceScan();
     console.log('Connecting ' + device.name);
@@ -225,8 +226,9 @@ export default class App extends Component {
     this.setState({dump: 'Dumping All Contents!'});
     var message = '';
     //  '{"ts":1654951056000,"pm10":"","pm25":"1","temp":"1","hum":"","long":"121.04664227522113","lat":"14.553687875023439","device_id":"Device_4"}';
-    const device_ID = 'Device_4'; //this.state.device.name;
-    const topic = `tb/mqtt-integration-guide/sensors/${device_ID}/telemetry`;
+    if (this.state.device == null) this.setState({device: 'maqiBLE_1'});
+    const device_id = this.state.device;
+    const topic = `tb/mqtt-integration-guide/sensors/${device_id}/telemetry`;
     client = new Paho.MQTT.Client('18.140.52.158', 8083, '/mqtt', '');
     client.onConnectionLost = onConnectionLost;
     client.onMessageArrived = onMessageArrived;
@@ -307,6 +309,7 @@ export default class App extends Component {
 
   async send_payload(item) {
     const start = new Date().getTime();
+    // Format Payload (unneccessary now)
     // let test_split = item.split(/[:|,]/);
     // if (test_split[4].slice(1, -1) == '') test_split[4] = '"0"';
     // if (test_split[6].slice(1, -1) == '') test_split[6] = '"0"';
@@ -329,7 +332,7 @@ export default class App extends Component {
       this.con_type(connectionInfo.type);
       const isWifi = this.state.con_type;
 
-      const device_id = 'Device_4'; //this.state.device.name;
+      const device_id = this.state.device;
       const topic = `tb/mqtt-integration-guide/sensors/${device_id}/telemetry`;
 
       if (isWifi == 'wifi' || isWifi == 'cellular') {
@@ -338,14 +341,13 @@ export default class App extends Component {
         client.publish(message);
         const end = new Date().getTime();
         console.log('sending time = ' + (end - start));
-        this.save_payload(item);
+        //this.save_payload(item);
       } else {
         this.save_payload(item);
       }
     });
-    this.save_payload(item);
     this.setState({payload: item});
-    console.log(item);
+    //console.log(item);
   }
 
   render() {
