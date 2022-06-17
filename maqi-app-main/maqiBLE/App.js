@@ -106,7 +106,7 @@ export default class App extends Component {
       const isWifi = this.state.con_type;
       if (isWifi == 'wifi' || isWifi == 'cellular') {
         this.dump_mem();
-        this.setState({dump: 'Not connected to network!'});
+        this.setState({dump: ''});
       } else {
         this.con_type(isWifi);
         this.setState({dump: 'Not connected to network!'});
@@ -152,6 +152,7 @@ export default class App extends Component {
       }
     });
   }
+
   setupDevice(device) {
     // Stop scanning as it's not necessary if you are scanning for one device.
     this.setState({device: device.name});
@@ -160,12 +161,15 @@ export default class App extends Component {
     console.log('Connecting ' + device.name);
     const device_id = 'Device_4'; //this.state.device.name; move to top
     const topic = `tb/mqtt-integration-guide/sensors/${device_id}/telemetry`;
+    const start = new Date().getTime();
     client = new Paho.MQTT.Client('18.140.52.158', 8083, '/mqtt', '');
     client.onConnectionLost = onConnectionLost;
     client.onMessageArrived = onMessageArrived;
     client.connect({onSuccess: onConnect});
     function onConnect() {
       console.log('connected');
+      const end = new Date().getTime();
+      console.log('connect time = ' + (end - start));
     }
     function onConnectionLost(responseObject) {
       if (responseObject.errorCode !== 0) {
@@ -213,7 +217,7 @@ export default class App extends Component {
     this.setState({key: key});
     await AsyncStorage.setItem(key, item);
     const payload = await AsyncStorage.getItem(key);
-    this.setState({payload: payload});
+    this.setState({mqttPayload: payload});
     const val_int = parseInt(value);
     const new_val_int = val_int + 1;
     const new_val = '' + new_val_int;
@@ -236,6 +240,7 @@ export default class App extends Component {
     var dump_counter = 0;
 
     async function onConnect() {
+      const start = new Date().getTime();
       while (dump_counter < 64) {
         const dump_key = 'mqtt_payload_' + dump_counter;
         const mqtt_payload_dump = await AsyncStorage.getItem(dump_key);
@@ -249,9 +254,11 @@ export default class App extends Component {
           dump_counter = dump_counter + 1;
         }
       }
+      const end = new Date().getTime();
+      console.log('dump time = ' + (end - start));
       return;
     }
-
+    this.setState({counter: null});
     function onConnectionLost(responseObject) {
       console.log('disconnected');
       if (responseObject.errorCode !== 0) {
@@ -259,7 +266,7 @@ export default class App extends Component {
       }
     }
     function onMessageArrived(message) {
-      console.log('onMessageArrived:'); // + message.payloadString);
+      console.log('onMessageArrived:');
     }
   }
 
@@ -299,16 +306,17 @@ export default class App extends Component {
         const data = this.state.values['0000ff01-0000-1000-8000-00805f9b34fb'];
         const decode_data = base64.decode(data);
         const split_data = decode_data.split('_', 1);
+        this.setState({payload: split_data});
         const device_id = device.name;
         const mqtt_payload = split_data + ',"device_id":"' + device_id + '"}';
-
+        this.save_payload(mqtt_payload);
         this.send_payload(mqtt_payload);
       },
     );
   }
 
   async send_payload(item) {
-    const start = new Date().getTime();
+    // const start = new Date().getTime();
     // Format Payload (unneccessary now)
     // let test_split = item.split(/[:|,]/);
     // if (test_split[4].slice(1, -1) == '') test_split[4] = '"0"';
@@ -339,14 +347,14 @@ export default class App extends Component {
         const message = new Paho.MQTT.Message(item, topic, 1, 0);
         message.destinationName = topic;
         client.publish(message);
-        const end = new Date().getTime();
-        console.log('sending time = ' + (end - start));
+        // const end = new Date().getTime();
+        // console.log('sending time = ' + (end - start));
         //this.save_payload(item);
       } else {
-        this.save_payload(item);
       }
     });
-    this.setState({payload: item});
+
+    this.setState({mqttPayload: item});
     //console.log(item);
   }
 
@@ -376,7 +384,7 @@ export default class App extends Component {
           </Text>
           <Text style={styles.info}>The Key is {this.state.key}</Text>
           <Text style={styles.info}>
-            The MQTT Payload string is {this.state.payload}
+            The MQTT Payload string is {this.state.mqttPayload}
           </Text>
         </View>
         <View style={styles.filler} />
