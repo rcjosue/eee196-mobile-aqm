@@ -1,1 +1,0 @@
-# maqi-app

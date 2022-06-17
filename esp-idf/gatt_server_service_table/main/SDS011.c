@@ -30,15 +30,15 @@
  */
 
 //== SDS Definitions ========================================================================
-#define ECHO_TEST_TXD  (10)
-#define ECHO_TEST_RXD  (9)
+#define ECHO_TEST_TXD  (17)
+#define ECHO_TEST_RXD  (16)
 #define ECHO_TEST_RTS  (UART_PIN_NO_CHANGE)
 #define ECHO_TEST_CTS  (UART_PIN_NO_CHANGE)
 
-#define BUF_SIZE (128)
-#define BAUD_RATE       (9600)
+#define BUF_SIZE 				(128)
+#define BAUD_RATE       		(9600)
 #define PACKET_READ_TICS        (800 / portTICK_RATE_MS)
-#define ECHO_UART_PORT          (UART_NUM_1)
+#define ECHO_UART_PORT          (UART_NUM_2)
 
 #define SDS_OK 0
 #define SDS_CHECKSUM_ERROR -1
@@ -176,8 +176,8 @@ int readSDS()
 	SDS_querydata();
 
 	if (SDS_rxbytes==10){
-		ESP_LOGI(SDS_TAG, "Received data from SDS011!");
-		ESP_LOG_BUFFER_HEXDUMP(SDS_TAG, SDS_data, SDS_rxbytes, ESP_LOG_INFO);	
+		// ESP_LOGI(SDS_TAG, "Received data from SDS011!");
+		// ESP_LOG_BUFFER_HEXDUMP(SDS_TAG, SDS_data, SDS_rxbytes, ESP_LOG_INFO);	
 
 		//Compute SDS_checksum
 		SDS_checksum = SDS_data[2] + SDS_data[3] + SDS_data[4] + SDS_data[5] + SDS_data[6] + SDS_data[7];
