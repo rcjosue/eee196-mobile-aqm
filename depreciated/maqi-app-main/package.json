@@ -1,0 +1,33 @@
+{
+  "name": "maqi-app",
+  "version": "1.0.0",
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "eject": "expo eject"
+  },
+  "dependencies": {
+    "buffer": "^6.0.3",
+    "expo": "~44.0.0",
+    "expo-constants": "^13.0.2",
+    "expo-location": "~14.0.1",
+    "expo-status-bar": "~1.2.0",
+    "mqtt": "^4.3.7",
+    "react": "17.0.1",
+    "react_native_mqtt": "^1.3.1",
+    "react-dom": "17.0.1",
+    "react-native": "0.64.3",
+    "react-native-maps": "0.29.4",
+    "react-native-modal": "^13.0.1",
+    "react-native-mqtt": "^0.1.0-beta4",
+    "react-native-uuid": "^2.0.1",
+    "react-native-web": "0.17.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.9"
+  },
+  "private": true
+}
