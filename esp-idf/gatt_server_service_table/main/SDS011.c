@@ -176,8 +176,8 @@ int readSDS()
 	SDS_querydata();
 
 	if (SDS_rxbytes==10){
-		ESP_LOGI(SDS_TAG, "Received data from SDS011!");
-		ESP_LOG_BUFFER_HEXDUMP(SDS_TAG, SDS_data, SDS_rxbytes, ESP_LOG_INFO);	
+		// ESP_LOGI(SDS_TAG, "Received data from SDS011!");
+		// ESP_LOG_BUFFER_HEXDUMP(SDS_TAG, SDS_data, SDS_rxbytes, ESP_LOG_INFO);	
 
 		//Compute SDS_checksum
 		SDS_checksum = SDS_data[2] + SDS_data[3] + SDS_data[4] + SDS_data[5] + SDS_data[6] + SDS_data[7];

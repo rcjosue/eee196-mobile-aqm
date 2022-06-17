@@ -6,7 +6,7 @@
     "interface/ftdi/esp32_devkitj_v1.cfg",
     "target/esp32.cfg"
   ],
-  "idf.portWin": "COM9",
+  "idf.portWin": "COM16",
   "files.associations": {
     "*.COBOL*": "cobol",
     "*.COB*": "cobol",

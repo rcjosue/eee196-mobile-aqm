@@ -32,9 +32,9 @@
 #define PROFILE_NUM                 1
 #define PROFILE_APP_IDX             0
 #define ESP_APP_ID                  0x55
-#define SAMPLE_DEVICE_NAME          "maqiBLE_1"
-//#define SAMPLE_DEVICE_NAME          "maqiBLE_2"
-//#define SAMPLE_DEVICE_NAME          "maqiBLE_3"
+// #define SAMPLE_DEVICE_NAME          "maqiBLE_1"
+#define SAMPLE_DEVICE_NAME          "maqiBLE_2"
+// #define SAMPLE_DEVICE_NAME          "maqiBLE_3"
 #define SVC_INST_ID                 0
 
 /* The max length of characteristic value. When the gatt client write or prepare write, 
@@ -50,12 +50,12 @@
 #define DCT_N					    16
 
 //LOC
-#define LONGI			"\"long\":\"121.04664227522113\","
-#define LATI			"\"lat\":\"14.553687875023439\"_"
-// #define LONGI			"\"long\":\"121.04679174229999\","
-// #define LATI			"\"lat\":\"14.554068956300023\"_"
-// #define LONGI			"\"long\":\"121.04654272271163\","
-// #define LATI			"\"lat\":\"14.553987432550239\"_"
+// #define LONGI			"\"long\":\"121.04664227522113\","
+// #define LATI			"\"lat\":\"14.553687875023439\"_"
+#define LONGI			"\"long\":\"121.04679174229999\","
+#define LATI			"\"lat\":\"14.554068956300023\"_"
+//  #define LONGI			"\"long\":\"121.04654272271163\","
+//  #define LATI			"\"lat\":\"14.553987432550239\"_"
 
 
 //-- user variables --------------------------------------------------------------------------------------------------
@@ -302,7 +302,7 @@ void printArray(float *arr, char *title)  // Array name Declared as a pointer
 }
 
 void save_sensor_data(){
-	ESP_LOGI(TAG, "String to Save: %s", save_string);
+	//ESP_LOGI(TAG, "String to Save: %s", save_string);
 
 	//Save String to Memory
 	//ESP_LOGI(TAG, "Opening Non-Volatile Storage (NVS) handle");
@@ -387,7 +387,7 @@ void send_stored_data()
 		ESP_LOGI(TAG, "Done");
 
 		//Get Read Counter from NVS
-		ESP_LOGI(TAG, "Getting max read counter value from NVS");
+		//ESP_LOGI(TAG, "Getting max read counter value from NVS");
 
 		nvs_val_size = BUF_SIZE;
 		err = nvs_get_str(load_data_handle, "counter", max_read_counter_str, &nvs_val_size);
@@ -395,7 +395,7 @@ void send_stored_data()
 		switch (err) {
 			case ESP_OK:
 				ESP_LOGI(TAG, "Done");
-				ESP_LOGI(TAG, "Got maximum read memory block number = %s", max_read_counter_str);
+				//ESP_LOGI(TAG, "Got maximum read memory block number = %s", max_read_counter_str);
 				break;
 			case ESP_ERR_NVS_NOT_FOUND:
 				ESP_LOGE(TAG, "The value is not initialized yet!");
@@ -407,7 +407,7 @@ void send_stored_data()
 		sscanf(max_read_counter_str, "%d", &max_read_counter);
 
 		//Restart Write Count to Zero
-		ESP_LOGI(TAG, "Restarting write counter to 0");
+		//ESP_LOGI(TAG, "Restarting write counter to 0");
 		err = nvs_set_str(load_data_handle, "counter", "0");
 		err = nvs_commit(load_data_handle);
 
@@ -420,15 +420,11 @@ void send_stored_data()
 		//Start Getting all stored data from memory and upload via mesh
         start = clock();
         for(read_counter=0; read_counter<max_read_counter; read_counter++){
-            if (read_counter == 15){                
-                end = clock();
-                cpu_time_used = ((long double) (end - start)) / CLOCKS_PER_SEC;
-                printf("~~~~~~~~TIME TO DUMP REF: %Lf\n", cpu_time_used);
-                start = clock();
-            }
+            
 			sprintf(read_counter_str, "%d", read_counter); //convert read_counter to string
+            //printf(read_counter_str);
 
-	    	ESP_LOGI(TAG, "Reading string from NVS key: %s", read_counter_str);
+	    	//ESP_LOGI(TAG, "Reading string from NVS key: %s", read_counter_str);
 
 			nvs_val_size = BUF_SIZE;
 			err = nvs_get_str(load_data_handle, read_counter_str, read_counter_nvs_val, &nvs_val_size);
@@ -436,13 +432,13 @@ void send_stored_data()
 			switch (err) {
 				case ESP_OK:
 					//ESP_LOGI(TAG, "Done");
-					ESP_LOGI(TAG, "Read value = %s", read_counter_nvs_val);
+					//ESP_LOGI(TAG, "Read value = %s", read_counter_nvs_val);
 
 					//Send Stored MQTT String to Mobile via Notification
 					memcpy(ble_notify_saved_data, read_counter_nvs_val, BUF_SIZE);
 					esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_notify_saved_data, false);
 
-					ESP_LOGI(TAG, "Notification Sent!");
+					//ESP_LOGI(TAG, "Notification Sent!");
 
 					break;
 				case ESP_ERR_NVS_NOT_FOUND:
@@ -451,12 +447,19 @@ void send_stored_data()
 				default :
 					ESP_LOGE(TAG, "Error (%s) reading!", esp_err_to_name(err));
 			}
+            
 		}
-        end = clock();
-        cpu_time_used = ((long double) (end - start)) / CLOCKS_PER_SEC;
-        printf("~~~~~~~~TIME TO DUMP COMP: %Lf\n", cpu_time_used);
+        // end = clock();
+        // cpu_time_used = ((long double) (end - start)) / CLOCKS_PER_SEC;
+        // printf("~~~~~~~~TIME TO DUMP: %Lf\n", cpu_time_used);
 
 		nvs_close(load_data_handle);
+        if (read_counter == 15 || read_counter == 31){                
+            end = clock();
+            cpu_time_used = ((long double) (end - start)) / CLOCKS_PER_SEC;
+            printf("~~~~~~~~TIME TO DUMP: %Lf\n", cpu_time_used);
+            start = clock();
+        }
 	}
 
     vTaskDelete(NULL);
@@ -470,7 +473,7 @@ void send_notification(){
         
         // init_DCT();
 		//-- SDS011 Read -------------------------
-		printf("=== Reading SDS ===\n" );
+		//printf("=== Reading SDS ===\n" );
 		//Wake Up SDS
 		SDS_setwake();
 
@@ -484,14 +487,14 @@ void send_notification(){
 			pm_25 = get_pm_25();
 		}while((SDS_ret!=0) || (pm_10<pm_25));
 
-		printf("PM10: %.2f\n", pm_10);
-		printf("PM2.5: %.2f\n", pm_25);
+		//printf("PM10: %.2f\t", pm_10);
+		//printf("PM2.5: %.2f\t", pm_25);
 
 		//Set SDS to sleep
 		SDS_setsleep();
 
 		//-- DHT22 Read ---------------------------
-		printf("=== Reading DHT ===\n" );
+		//printf("=== Reading DHT ===\n" );
 
 		do{
 			DHT_ret = readDHT();
@@ -505,11 +508,11 @@ void send_notification(){
 		temp = getTemperature();
 		hum = getHumidity();
 
-		printf("Tmp %.1f\n", temp);
-		printf("Hum %.1f\n", hum);
+		//printf("Tmp: %.1f\t", temp);
+		//printf("Hum: %.1f\t", hum);
 
         obtain_time(arr_counter);
-        printf("Time: %s\n", epoch_buf);
+        //printf("Time: %s\n", epoch_buf);
         //Store measured values to array
         
         //tm_arr[arr_counter] = *epoch_buf;
@@ -518,22 +521,23 @@ void send_notification(){
         temp_ref[arr_counter] = temp_arr[arr_counter] = temp;
         hum_ref[arr_counter] = hum_arr[arr_counter] = hum;
 		
-        // sprintf(tm_str, "{\"ts\":%s000,", tm_arr[arr_counter]);
-        // sprintf(pm_10_stref, "\"pm10\":\"%.2f\",", pm_10);
-        // sprintf(pm_25_stref, "\"pm25\":\"%.2f\",", pm_25);
-        // sprintf(temp_stref, "\"temp\":\"%.2f\",", temp);
-        // sprintf(hum_stref, "\"hum\":\"%.2f\",", hum);
-        // strcpy(ref_data, tm_str);
-        // strcat(ref_data, pm_10_stref);
-        // strcat(ref_data, pm_25_stref);
-        // strcat(ref_data, temp_stref);
-        // strcat(ref_data, hum_stref);
-        // strcat(ref_data, longi_str);
-        // strcat(ref_data, lati_str);
-
+        sprintf(tm_str, "{\"ts\":%s000,", tm_arr[arr_counter]);
+        sprintf(pm_10_stref, "\"pm10\":\"%.2f\",", pm_10);
+        sprintf(pm_25_stref, "\"pm25\":\"%.2f\",", pm_25);
+        sprintf(temp_stref, "\"temp\":\"%.2f\",", temp);
+        sprintf(hum_stref, "\"hum\":\"%.2f\",", hum);
+        strcpy(ref_data, tm_str);
+        strcat(ref_data, pm_10_stref);
+        strcat(ref_data, pm_25_stref);
+        strcat(ref_data, temp_stref);
+        strcat(ref_data, hum_stref);
+        strcat(ref_data, longi_str);
+        strcat(ref_data, lati_str);
+        
+        // ESP_LOGI(TAG, "Uncompres String: %s", ref_data);
         arr_counter++;
-        // start = clock();
         // if(is_ble_connected){
+        //     start = clock();
         //     ////ESP_LOGI(TAG, "BLE is connected!");
         //     // memcpy(ble_data, sensor_data, 180);
         //     memcpy(ble_data, ref_data, BUF_SIZE);
@@ -542,7 +546,7 @@ void send_notification(){
         //     if(client_notify_stat == 1){
         //         //send sensor data notification to client
         //         esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, false);
-        //         ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
+        //         //ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
         //     }else if(client_notify_stat == 2){
         //         //send sensor data indication to client
         //         esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, true);
@@ -551,13 +555,14 @@ void send_notification(){
         //         esp_ble_gatts_set_attr_value(heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data);
         //         ESP_LOGI(GATTS_TABLE_TAG, "Table Updated!");
         //     }
-        // }
-        // end = clock();
-        // cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-        // printf("~~~~~~~~TIME TO SEND REF: %Lf\n", cpu_time_used);
+        //     end = clock();
+        //     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+        //     printf("~~~~~~~~TIME TO SEND REF: %Lf\n", cpu_time_used);
 
-        //strcpy(save_string, ref_data);
-        //save_sensor_data();
+        // }
+
+        // strcpy(save_string, ref_data);
+        // save_sensor_data();
 
 
         if (arr_counter == DCT_N){
@@ -610,24 +615,27 @@ void send_notification(){
 
                 //Testing
                 // printArray(hum_ref, "HUM Raw: ");
-                sprintf(pm_10_stref, "\"pm10\":\"%.2f\",", pm_10_ref[i]);
-                sprintf(pm_25_stref, "\"pm25\":\"%.2f\",", pm_25_ref[i]);
-                sprintf(temp_stref, "\"temp\":\"%.2f\",", temp_ref[i]);
-                sprintf(hum_stref, "\"hum\":\"%.2f\",", hum_ref[i]);
-                strcpy(ref_data, tm_str);
-                strcat(ref_data, pm_10_stref);
-		        strcat(ref_data, pm_25_stref);
-		        strcat(ref_data, temp_stref);
-		        strcat(ref_data, hum_stref);
-                strcat(ref_data, longi_str);
-		        strcat(ref_data, lati_str);
+                // sprintf(pm_10_stref, "\"pm10\":\"%.2f\",", pm_10_ref[i]);
+                // sprintf(pm_25_stref, "\"pm25\":\"%.2f\",", pm_25_ref[i]);
+                // sprintf(temp_stref, "\"temp\":\"%.2f\",", temp_ref[i]);
+                // sprintf(hum_stref, "\"hum\":\"%.2f\",", hum_ref[i]);
+                // strcpy(ref_data, tm_str);
+                // strcat(ref_data, pm_10_stref);
+		        // strcat(ref_data, pm_25_stref);
+		        // strcat(ref_data, temp_stref);
+		        // strcat(ref_data, hum_stref);
+                // strcat(ref_data, longi_str);
+		        // strcat(ref_data, lati_str);
 
-                printf("%d,%d,%d\n", strlen(sensor_data), strlen(ref_data), strlen(ref_data)-strlen(sensor_data));
-                ESP_LOGI(TAG, "Generated String: %s", sensor_data);
-                ESP_LOGI(TAG, "Uncompres String: %s", ref_data);
+                // printf("%d,%d,%d\n", strlen(sensor_data), strlen(ref_data), strlen(ref_data)-strlen(sensor_data));
+                // ESP_LOGI(TAG, "Generated String: %s", sensor_data);
+                // ESP_LOGI(TAG, "Uncompres String: %s", ref_data);
 
-               start = clock();
                 if(is_ble_connected){
+                    // start = clock();
+                    // struct timeval *tv
+                    // start = gettimeofday(&tv,NULL);
+                    // sprintf(usec, "%lld", (long long)tv.tv_usec);
                     ////ESP_LOGI(TAG, "BLE is connected!");
                     memcpy(ble_data, sensor_data, 180);
                     // memcpy(ble_data, ref_data, BUF_SIZE);
@@ -636,7 +644,7 @@ void send_notification(){
                     if(client_notify_stat == 1){
                         //send sensor data notification to client
                         esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, false);
-                        ESP_LOGI(GATTS_TABLE_TAG, "Notificaiton Sent!");
+                        // ESP_LOGI(GATTS_TABLE_TAG, "Notification Sent!");
                     }else if(client_notify_stat == 2){
                         //send sensor data indication to client
                         esp_ble_gatts_send_indicate(heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if, curr_conn_id, heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data, true);
@@ -645,14 +653,23 @@ void send_notification(){
                         esp_ble_gatts_set_attr_value(heart_rate_handle_table[IDX_CHAR_VAL_A], BUF_SIZE, ble_data);
                         ESP_LOGI(GATTS_TABLE_TAG, "Table Updated!");
                     }
+                    // end = clock();
+                    // cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+                    // end = gettimeofday(struct timeval *tv, struct timezone *tz);
+                    // cpu_time_used = ((double) (end - start));
+                    // printf("~~~~~~~~TIME TO SEND COMP: %Lf\n", cpu_time_used);
+                    // sprintf(tm_str, "%lu", start);
+                    // printf(": %s\t",tm_str);
+                    // sprintf(tm_str, "%lu", end);
+                    // printf(": %s\t",tm_str);
+                    //printf(start);
+                    //printf(end);                     
                 }
-                end = clock();
-                cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-                printf("~~~~~~~~TIME TO SEND COMP: %Lf\n", cpu_time_used);
+                
 
-                strcpy(save_string, sensor_data);
+                // strcpy(save_string, sensor_data);
+                // save_sensor_data();
 
-                save_sensor_data();
                 // xTaskCreate(save_sensor_data, "SAVE_DATA", 3072, NULL, 5, NULL);
                 //Originally 2 secs
                 vTaskDelay(3 * 1000 / portTICK_RATE_MS);
@@ -662,19 +679,19 @@ void send_notification(){
             // init_DCT();
             // iDCT_mod(pm_10_arr);
             // printArray(pm_10_arr, "PM10 Decomp: ");
-            // // printArray(pm_10_ref, "PM10 Origin: ");
+            printArray(pm_10_ref, "PM10 Origin: ");
 
             // iDCT_mod(pm_25_arr);
             // printArray(pm_25_arr, "PM25 Decomp: ");
-            // // printArray(pm_25_ref, "PM25 Origin: ");
+            printArray(pm_25_ref, "PM25 Origin: ");
 
             // iDCT_mod(temp_arr);
             // printArray(temp_arr, "TEMP Decomp: ");
-            // // printArray(temp_ref, "TEMP Origin: ");
+            printArray(temp_ref, "TEMP Origin: ");
 
             // iDCT_mod(hum_arr);
             // printArray(hum_arr, "HUM Decomp: ");
-            // // printArray(hum_ref, "HUM Origin: ");
+            printArray(hum_ref, "HUM Origin: ");
 
             // deinit_DCT();
 
@@ -702,11 +719,12 @@ void send_notification(){
 
              vTaskDelay(15000 / portTICK_RATE_MS);
              */
+            vTaskDelete(NULL);
         }
 
     	//delay 3 seconds
 		vTaskDelay(3000 / portTICK_RATE_MS);
-        vTaskDelete(NULL);
+        //vTaskDelete(NULL);
 	}
 
     is_readsensor_task_running = false;

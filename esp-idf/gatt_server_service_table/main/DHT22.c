@@ -61,11 +61,11 @@ void DHT_errorhandler(int DHT_response)
 	switch(DHT_response) {
 	
 		case DHT_TIMEOUT_ERROR :
-			ESP_LOGE( DHT_TAG, "Sensor Timeout\n" );
+			ESP_LOGE( DHT_TAG, "Sensor Timeout" );
 			break;
 
 		case DHT_CHECKSUM_ERROR:
-			ESP_LOGE( DHT_TAG, "CheckSum Error\n" );
+			ESP_LOGE( DHT_TAG, "CheckSum Error" );
 			break;
 
 		case DHT_OK:
